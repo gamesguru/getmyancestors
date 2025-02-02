@@ -1,5 +1,6 @@
-babelfish==0.6.0
-diskcache==5.2.1
-requests==2.31.0
-fake-useragent==1.2.1
+babelfish==0.6.1
+diskcache==5.6.3
+requests==2.32.3
+fake-useragent==2.0.3
+requests-ratelimiter==0.7.0
 setuptools==70.1.0
