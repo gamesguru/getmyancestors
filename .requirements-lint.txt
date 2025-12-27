@@ -1,0 +1,8 @@
+black==25.1.0
+flake8==7.3.0
+isort==6.0.1
+mypy==1.17.1
+pylint==3.3.8
+types-requests==2.32.4.20250809
+coverage==7.13.0
+pytest==9.0.2
