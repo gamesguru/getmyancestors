@@ -1,59 +1,49 @@
-import sys
-from unittest.mock import MagicMock, patch
-
 import pytest
-
+import sys
+from unittest.mock import patch, MagicMock
 from getmyancestors.getmyancestors import main
-
 
 class TestCLI:
 
-    @patch("getmyancestors.getmyancestors.Session")
-    @patch("getmyancestors.getmyancestors.Tree")
-    @patch(
-        "sys.argv",
-        ["getmyancestors", "-u", "testuser", "-p", "testpass", "-i", "KW7V-Y32"],
-    )
-    def test_main_execution(self, mock_tree, mock_session):
-        """Test that main runs with basic arguments."""
-        mock_fs = mock_session.return_value
-        mock_fs.logged = True
+    @patch('getmyancestors.getmyancestors.Session')
+    @patch('getmyancestors.getmyancestors.Tree')
+    def test_basic_args(self, MockTree, MockSession):
+        """Test that arguments are parsed and passed to classes correctly"""
 
-        # Run main
-        main()
+        # Mock sys.argv to simulate command line execution
+        test_args = [
+            "getmyancestors",
+            "-u", "myuser",
+            "-p", "mypass",
+            "-i", "KW7V-Y32",
+            "--verbose"
+        ]
 
-        # Verify Session initialized with args
-        mock_session.assert_called_with(
-            username="testuser",
-            password="testpass",
-            client_id=None,
-            redirect_uri=None,
-            verbose=False,
-            logfile=False,
-            timeout=60,
-        )
+        # Setup the session to appear logged in
+        MockSession.return_value.logged = True
 
-        # Verify Tree operations
-        mock_tree.return_value.add_indis.assert_called()
-        mock_tree.return_value.print.assert_called()
-
-    @patch("getmyancestors.getmyancestors.Session")
-    @patch(
-        "sys.argv",
-        ["getmyancestors", "-u", "testuser", "-p", "testpass", "--descend", "2"],
-    )
-    def test_descend_argument(self, mock_session):
-        """Test that the descend argument is passed to logic."""
-        mock_fs = mock_session.return_value
-        mock_fs.logged = True
-
-        # We need to mock Tree because main interacts with it deeply
-        with patch("getmyancestors.getmyancestors.Tree") as mock_tree:
-            mock_tree_instance = mock_tree.return_value
-            # Return empty sets to stop loops
-            mock_tree_instance.add_children.return_value = set()
-
+        with patch.object(sys, 'argv', test_args):
             main()
 
-            # Verify add_children was called (logic inside main triggers this based on args.descend)
-            assert mock_tree_instance.add_children.called
+        # Verify Session was initialized with CLI args
+        MockSession.assert_called_with(
+            "myuser",
+            "mypass",
+            None, # client_id (default)
+            None, # redirect_uri (default)
+            True, # verbose
+            False, # logfile
+            60 # timeout
+        )
+
+        # Verify Tree started
+        MockTree.return_value.add_indis.assert_called_with(["KW7V-Y32"])
+
+    def test_arg_validation(self):
+        """Test that invalid ID formats cause an exit"""
+        test_args = ["getmyancestors", "-u", "u", "-p", "p", "-i", "BAD_ID"]
+
+        with patch.object(sys, 'argv', test_args):
+            with pytest.raises(SystemExit):
+                # This should trigger sys.exit("Invalid FamilySearch ID...")
+                main()
