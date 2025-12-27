@@ -38,3 +38,21 @@ getmyancestors = "getmyancestors.getmyancestors:main"
 mergemyancestors = "getmyancestors.mergemyancestors:main"
 fstogedcom = "getmyancestors.fstogedcom:main"
 
+[tool.pytest]
+# See: https://docs.pytest.org/en/7.1.x/reference/customize.html
+testpaths = ["tests"]
+
+[tool.coverage.run]
+# See: https://coverage.readthedocs.io/en/7.2.2/config.html#run
+command_line = "-m pytest -svv"
+source = ["getmyancestors"]
+
+[tool.coverage.report]
+fail_under = 75.00
+precision = 2
+
+show_missing = true
+skip_empty = true
+skip_covered = true
+
+exclude_lines = ["pragma: no cover"]

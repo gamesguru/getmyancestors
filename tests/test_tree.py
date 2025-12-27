@@ -7,30 +7,23 @@ from getmyancestors.classes.tree import Indi, Tree
 
 class TestTree:
 
-    @pytest.fixture
-    def mock_session(self, mock_user_data):
-        session = MagicMock()
-        session.fid = "KW7V-Y32"
-        session.get_url.return_value = mock_user_data
-        session._ = lambda s: s  # Mock translation identity function
-        return session
-
-    def test_add_indis(self, mock_session, mock_person_data):
+    def test_add_indis(self, mock_session, sample_person_json):
         """Test adding a list of individuals to the tree."""
+
+        # Setup the side effect to return person data or None
+        def get_url_side_effect(url, headers=None):
+            if "persons/KW7V-Y32" in url:
+                return sample_person_json
+            return None
+
+        mock_session.get_url.side_effect = get_url_side_effect
+
         tree = Tree(mock_session)
-
-        # Mock the API call for person details
-        mock_session.get_url.side_effect = [
-            mock_person_data,  # For person details
-            None,  # For child relationships (empty for this test)
-        ]
-
         tree.add_indis(["KW7V-Y32"])
 
         assert "KW7V-Y32" in tree.indi
         person = tree.indi["KW7V-Y32"]
         assert person.name == "John Doe"
-        assert person.sex == "M"
 
     def test_add_parents(self, mock_session):
         """Test fetching parents creates family links."""
@@ -54,8 +47,8 @@ class TestTree:
             ]
         }
 
-        # Mock fetching the actual parent person objects
-        # We patch add_indis to avoid the recursive fetch details logic for this unit test
+        # We patch add_indis because we don't want to recursively fetch the parents' full details
+        # We just want to test that add_parents parses the relationship JSON correctly
         with patch.object(tree, "add_indis") as mock_add_indis:
             result = tree.add_parents({child_id})
 

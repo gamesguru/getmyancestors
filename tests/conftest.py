@@ -1,69 +1,74 @@
-import pytest
-from unittest.mock import MagicMock
-import sys
 import os
+import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Ensure we can import the module from the root directory
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from getmyancestors.classes.session import Session
+
 
 @pytest.fixture
 def mock_session():
     """
     Creates a Session object where the network layer is mocked out.
     """
-    # Create the session but suppress the automatic login() call in __init__
-    # We do this by mocking the login method *before* instantiation
-    with pytest.helpers.patch_method(Session, 'login'):
+    with patch("getmyancestors.classes.session.Session.login"):
         session = Session("test_user", "test_pass", verbose=False)
 
-        # Manually set logged status to True so checks pass
-        # We need to mock the cookies since 'logged' property checks for 'fssessionid'
-        session.cookies = {"fssessionid": "mock_session_id"}
+        # Mock cookies
+        session.cookies = {"fssessionid": "mock_session_id", "XSRF-TOKEN": "mock_token"}
 
-        # Mock the request methods
+        # Mock session attributes required by Tree
+        session.lang = "en"  # Fixes babelfish error
+        session.fid = "KW7V-Y32"  # Fixes missing root ID
+
+        # Mock the network methods
         session.get = MagicMock()
         session.post = MagicMock()
+        session.get_url = MagicMock()
 
-        # Mock the internal translation method to just return the string
+        # Mock the translation method
         session._ = lambda s: s
 
-        return session
+        yield session
+
 
 @pytest.fixture
 def sample_person_json():
-    """Returns a raw JSON response representing a Person from FamilySearch"""
     return {
-        "persons": [{
-            "id": "KW7V-Y32",
-            "display": {
-                "name": "John Doe",
-                "gender": "Male",
-                "lifespan": "1900-1980"
-            },
-            "facts": [
-                {
-                    "type": "http://gedcomx.org/Birth",
-                    "date": {"original": "1 Jan 1900"},
-                    "place": {"original": "New York"}
-                }
-            ],
-            "names": [
-                {
-                    "nameForms": [{"fullText": "John Doe"}]
-                }
-            ]
-        }]
+        "persons": [
+            {
+                "id": "KW7V-Y32",
+                "display": {
+                    "name": "John Doe",
+                    "gender": "Male",
+                    "lifespan": "1900-1980",
+                },
+                "facts": [
+                    {
+                        "type": "http://gedcomx.org/Birth",
+                        "date": {"original": "1 Jan 1900"},
+                        "place": {"original": "New York"},
+                    }
+                ],
+                "names": [{"nameForms": [{"fullText": "John Doe"}]}],
+            }
+        ]
     }
 
-# Helper to patch methods cleanly in fixtures
-class Helpers:
-    @staticmethod
-    def patch_method(cls, method_name):
-        from unittest.mock import patch
-        return patch.object(cls, method_name)
 
 @pytest.fixture
-def helpers():
-    return Helpers
+def mock_user_data():
+    """Fixes 'fixture not found' error in test_tree.py"""
+    return {
+        "users": [
+            {
+                "personId": "KW7V-Y32",
+                "preferredLanguage": "en",
+                "displayName": "Test User",
+            }
+        ]
+    }
