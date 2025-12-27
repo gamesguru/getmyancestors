@@ -1,10 +1,7 @@
-from unittest.mock import MagicMock, patch
-
 import pytest
+from unittest.mock import MagicMock, patch
 from requests.exceptions import HTTPError
-
 from getmyancestors.classes.session import Session
-
 
 class TestSession:
 
@@ -19,29 +16,39 @@ class TestSession:
         session.cookies = {"XSRF-TOKEN": "mock_xsrf_token"}
         session.headers = {"User-Agent": "test"}
 
-        # 3. Setup POST responses
+        # 3. Setup POST responses (2 calls)
+        # Call 1: Login with creds -> returns redirectUrl
         mock_response_login = MagicMock()
         mock_response_login.json.return_value = {"redirectUrl": "http://auth.url"}
 
+        # Call 2: Exchange code for token -> returns access_token
         mock_response_token = MagicMock()
         mock_response_token.json.return_value = {"access_token": "fake_token"}
 
         session.post = MagicMock(side_effect=[mock_response_login, mock_response_token])
 
-        # 4. Setup GET responses
+        # 4. Setup GET responses (3 calls)
+        # Call 1: Initial page load (sets cookie)
         mock_response_initial = MagicMock()
         mock_response_initial.status_code = 200
 
-        # CRITICAL FIX: The code reads response.url or headers["location"]
-        # We must mock both to be safe against different code paths
-        mock_response_auth_code = MagicMock()
-        mock_response_auth_code.url = "http://callback?code=123"
-        mock_response_auth_code.headers = {"location": "http://callback?code=123"}
-        mock_response_auth_code.status_code = 200
+        # Call 2: Follow the 'redirectUrl' from the POST above
+        mock_response_redirect = MagicMock()
+        mock_response_redirect.status_code = 200
 
-        session.get = MagicMock(
-            side_effect=[mock_response_initial, mock_response_auth_code]
-        )
+        # Call 3: The Authorization endpoint -> returns Location header with code
+        mock_response_authorize = MagicMock()
+        mock_response_authorize.url = "http://callback?code=123"
+        mock_response_authorize.headers = {"location": "http://callback?code=123"}
+        mock_response_authorize.status_code = 200 # Often 302, but requests follows it.
+        # Note: If allow_redirects=False is used in code, status might be 302.
+        # The session.py code checks 'location' in headers regardless.
+
+        session.get = MagicMock(side_effect=[
+            mock_response_initial,
+            mock_response_redirect,
+            mock_response_authorize
+        ])
 
         # 5. Run login
         session.login()
@@ -49,20 +56,14 @@ class TestSession:
         # 6. Assertions
         assert session.headers.get("Authorization") == "Bearer fake_token"
 
-    def test_login_keyerror_handling(self):
-        """Ensure it handles missing keys gracefully."""
-        pass
-
     def test_get_url_403_ordinances(self):
         """Test handling of 403 Forbidden specifically for ordinances."""
         with patch("getmyancestors.classes.session.Session.login"):
             session = Session("u", "p")
-            session.lang = "en"  # Prevent other attribute errors
+            session.lang = "en"
 
         response_403 = MagicMock(status_code=403)
-        response_403.json.return_value = {
-            "errors": [{"message": "Unable to get ordinances."}]
-        }
+        response_403.json.return_value = {"errors": [{"message": "Unable to get ordinances."}]}
         response_403.raise_for_status.side_effect = HTTPError("403 Client Error")
 
         session.get = MagicMock(return_value=response_403)
