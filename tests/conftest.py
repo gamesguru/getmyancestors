@@ -22,8 +22,8 @@ def mock_session():
         session.cookies = {"fssessionid": "mock_session_id", "XSRF-TOKEN": "mock_token"}
 
         # Mock session attributes required by Tree
-        session.lang = "en"  # Fixes babelfish error
-        session.fid = "KW7V-Y32"  # Fixes missing root ID
+        session.lang = "en"
+        session.fid = "KW7V-Y32"
 
         # Mock the network methods
         session.get = MagicMock()
@@ -42,6 +42,7 @@ def sample_person_json():
         "persons": [
             {
                 "id": "KW7V-Y32",
+                "living": False,
                 "display": {
                     "name": "John Doe",
                     "gender": "Male",
@@ -54,7 +55,12 @@ def sample_person_json():
                         "place": {"original": "New York"},
                     }
                 ],
-                "names": [{"nameForms": [{"fullText": "John Doe"}]}],
+                "names": [
+                    {
+                        "nameForms": [{"fullText": "John Doe"}],
+                        "preferred": True,  # <--- Added this required field
+                    }
+                ],
             }
         ]
     }
@@ -62,7 +68,6 @@ def sample_person_json():
 
 @pytest.fixture
 def mock_user_data():
-    """Fixes 'fixture not found' error in test_tree.py"""
     return {
         "users": [
             {
