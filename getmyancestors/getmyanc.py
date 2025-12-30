@@ -2,23 +2,29 @@
 
 # global imports
 from __future__ import print_function
+
+import argparse
+import asyncio
+import getpass
+import os
 import re
 import sys
 import time
-from urllib.parse import unquote
-import getpass
-import asyncio
-import argparse
 
-# local imports
+from getmyancestors.classes.session import CachedSession, Session
 from getmyancestors.classes.tree import Tree
-from getmyancestors.classes.session import Session
-from getmyancestors.classes.session import CachedSession
 
 
 def main():
+    # Forces stdout to use UTF-8 or at least not crash on unknown characters
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     parser = argparse.ArgumentParser(
-        description="Retrieve GEDCOM data from FamilySearch Tree (4 Jul 2016)",
+        description="Retrieve GEDCOM data from FamilySearch Tree",
         add_help=False,
         usage="getmyancestors -u username -p password [options]",
     )
@@ -61,14 +67,14 @@ def main():
         help="Number of generations to descend [0]",
     )
     parser.add_argument(
-        '--distance',
+        "--distance",
         metavar="<INT>",
         type=int,
         default=0,
         help="The maxium distance from the starting individuals [0]. If distance is set, ascend and descend will be ignored.",
     )
     parser.add_argument(
-        '--only-blood-relatives',
+        "--only-blood-relatives",
         action="store_true",
         default=True,
         help="Only include blood relatives in the tree [False]",
@@ -81,10 +87,18 @@ def main():
         help="Add spouses and couples information [False]",
     )
     parser.add_argument(
-        "--cache",
-        action="store_true",
-        default=False,
-        help="Use of http cache to reduce requests during testing [False]",
+        "--no-cache",
+        dest="cache",
+        action="store_false",
+        default=True,
+        help="Disable http cache [True]",
+    )
+    parser.add_argument(
+        "--no-cache-control",
+        dest="cache_control",
+        action="store_false",
+        default=True,
+        help="Disable cache-control (use dumb cache) [True]",
     )
     parser.add_argument(
         "-r",
@@ -115,7 +129,6 @@ def main():
         default=60,
         help="Timeout in seconds [60]",
     )
-
     parser.add_argument(
         "-x",
         "--xml",
@@ -142,13 +155,17 @@ def main():
         type=str,
         help="Geonames.org username in order to download place data",
     )
+    parser.add_argument(
+        "--client_id", metavar="<STR>", type=str, help="Use Specific Client ID"
+    )
+    parser.add_argument(
+        "--redirect_uri", metavar="<STR>", type=str, help="Use Specific Redirect Uri"
+    )
     try:
         parser.add_argument(
             "-o",
             "--outfile",
             metavar="<FILE>",
-            # type=argparse.FileType("w", encoding="UTF-8"),
-            # default=sys.stdout,
             help="output GEDCOM file [stdout]",
         )
         parser.add_argument(
@@ -171,6 +188,7 @@ def main():
     except SystemExit:
         parser.print_help(file=sys.stderr)
         sys.exit(2)
+
     if args.individuals:
         for fid in args.individuals:
             if not re.match(r"[A-Z0-9]{4}-[A-Z0-9]{3}", fid):
@@ -180,19 +198,28 @@ def main():
             if not re.match(r"[A-Z0-9]{4}-[A-Z0-9]{3}", fid):
                 sys.exit("Invalid FamilySearch ID: " + fid)
 
-    args.username = (
-        args.username if args.username else input("Enter FamilySearch username: ")
-    )
-    args.password = (
-        args.password
-        if args.password
-        else getpass.getpass("Enter FamilySearch password: ")
-    )
+    if not args.username:
+        if args.verbose:
+            print("⚠️ Warning: getting username from command line, env var not set.")
+        args.username = input("Enter FamilySearch username: ")
+    if not args.password:
+        if os.getenv("FAMILYSEARCH_PASS"):
+            if args.verbose:
+                print("✅ Using password from env var.")
+            args.password = os.getenv("FAMILYSEARCH_PASS")
+        else:
+            if args.verbose:
+                print("⚠️ Warning: getting password from command line, env var not set.")
+            args.password = getpass.getpass("Enter FamilySearch password: ")
+
+    if args.verbose:
+        print("✅ Using username: " + args.username)
+        print(f"✅ Using password: {len(args.password)} digits long.")
 
     time_count = time.time()
 
     # Report settings used when getmyancestors is executed
-    if args.save_settings and args.outfile.name != "<stdout>":
+    if args.save_settings and args.outfile and args.outfile != "<stdout>":
 
         def parse_action(act):
             if not args.show_password and act.dest == "password":
@@ -200,10 +227,10 @@ def main():
             value = getattr(args, act.dest)
             return str(getattr(value, "name", value))
 
-        formatting = "{:74}{:\t>1}\n"
-        settings_name = args.outfile.name.split(".")[0] + ".settings"
+        formatting = "{:74}{:\\t>1}\\n"
+        settings_name = args.outfile.rsplit(".", 1)[0] + ".settings"
         try:
-            with open(settings_name, "w") as settings_file:
+            with open(settings_name, "w", encoding="utf-8") as settings_file:
                 settings_file.write(
                     formatting.format("time stamp: ", time.strftime("%X %x %Z"))
                 )
@@ -220,16 +247,30 @@ def main():
 
     # initialize a FamilySearch session and a family tree object
     print("Login to FamilySearch...", file=sys.stderr)
+
+    # Common params
+    session_kwargs = {
+        "username": args.username,
+        "password": args.password,
+        "client_id": args.client_id,
+        "redirect_uri": args.redirect_uri,
+        "verbose": args.verbose,
+        "logfile": args.logfile,
+        "timeout": args.timeout,
+        "cache_control": args.cache_control,
+    }
+
     if args.cache:
         print("Using cache...", file=sys.stderr)
-        fs = CachedSession(args.username, args.password, args.verbose, args.logfile, args.timeout)
+        fs = CachedSession(**session_kwargs)
     else:
-        fs = Session(args.username, args.password, args.verbose, args.logfile, args.timeout)
+        fs = Session(**session_kwargs)
+
     if not fs.logged:
         sys.exit(2)
     _ = fs._
     tree = Tree(
-        fs, 
+        fs,
         exclude=args.exclude,
         geonames_key=args.geonames,
     )
@@ -239,7 +280,7 @@ def main():
         test = fs.get_url(
             "/service/tree/tree-data/reservations/person/%s/ordinances" % fs.fid, {}
         )
-        if test["status"] != "OK":
+        if not test or test.get("status") != "OK":
             sys.exit(2)
 
     try:
@@ -247,8 +288,6 @@ def main():
         todo = args.individuals if args.individuals else [fs.fid]
         print(_("Downloading starting individuals..."), file=sys.stderr)
         tree.add_indis(todo)
-
-
 
         # download ancestors
         if args.distance == 0:
@@ -279,7 +318,10 @@ def main():
 
             # download spouses
             if args.marriage:
-                print(_("Downloading spouses and marriage information..."), file=sys.stderr)
+                print(
+                    _("Downloading spouses and marriage information..."),
+                    file=sys.stderr,
+                )
                 todo = set(tree.indi.keys())
                 tree.add_spouses(todo)
 
@@ -288,7 +330,6 @@ def main():
             todo_others = set()
             done = set()
             for distance in range(args.distance):
-
                 if not todo_bloodline and not todo_others:
                     break
                 done |= todo_bloodline
@@ -299,23 +340,15 @@ def main():
                 parents = tree.add_parents(todo_bloodline) - done
                 children = tree.add_children(todo_bloodline) - done
 
-                # download spouses
                 if args.marriage:
-                    print(_("Downloading spouses and marriage information..."), file=sys.stderr)
+                    print(
+                        _("Downloading spouses and marriage information..."),
+                        file=sys.stderr,
+                    )
                     todo = set(tree.indi.keys())
                     tree.add_spouses(todo)
 
-                # spouses = tree.add_spouses(todo_bloodline) - done
-
                 todo_bloodline = parents | children
-                # if args.only_blood_relatives:
-                #     # Downloading non bloodline parents
-                #     tree.add_parents(todo_others)
-
-                #     # TODO what is a non bloodline person becomes bloodline on another branch?
-                #     todo_others = spouses
-                # else:
-                    # todo_bloodline |= spouses
 
         # download ordinances, notes and contributors
         async def download_stuff(loop):
@@ -333,7 +366,8 @@ def main():
             for future in futures:
                 await future
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         print(
             _("Downloading notes")
             + (
@@ -348,14 +382,21 @@ def main():
         loop.run_until_complete(download_stuff(loop))
 
     finally:
-        # compute number for family relationships and print GEDCOM file
         tree.reset_num()
         if args.xml:
-            with open(args.outfile, "wb") as f:
-                tree.printxml(f)
+            if args.outfile:
+                with open(args.outfile, "wb") as f:
+                    tree.printxml(f)
+            else:
+                tree.printxml(sys.stdout.buffer)
         else:
-            with open(args.outfile, "w", encoding="UTF-8") as f:
-                tree.print(f)
+            if args.outfile:
+                with open(args.outfile, "w", encoding="UTF-8") as f:
+                    tree.print(f)
+            else:
+                tree.print(sys.stdout)
+
+        # Statistics printout (abbreviated for brevity)
         print(
             _(
                 "Downloaded %s individuals, %s families, %s sources and %s notes "

@@ -4,15 +4,10 @@
 # global imports
 import os
 import sys
-from tkinter import (
-    Tk,
-    PhotoImage,
-)
+from tkinter import PhotoImage, Tk
 
 # local imports
-from getmyancestors.classes.gui import (
-    FStoGEDCOM,
-)
+from getmyancestors.classes.gui import FStoGEDCOM
 
 
 def main():

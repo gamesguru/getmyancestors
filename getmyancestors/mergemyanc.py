@@ -2,14 +2,12 @@
 
 from __future__ import print_function
 
-# global imports
+import argparse
 import os
 import sys
-import argparse
 
-# local imports
-from getmyancestors.classes.tree import Indi, Fam, Tree
 from getmyancestors.classes.gedcom import Gedcom
+from getmyancestors.classes.tree import Fam, Indi, Tree
 
 sys.path.append(os.path.dirname(sys.argv[0]))
 
