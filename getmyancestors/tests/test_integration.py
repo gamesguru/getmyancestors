@@ -107,6 +107,10 @@ class TestFullIntegration(unittest.TestCase):
         output_file = os.path.abspath(".tmp/test_output.ged")
         settings_file = os.path.abspath(".tmp/test_output.settings")
 
+        # Create the .tmp directory if it doesn't exist
+        tmp_dir = os.path.dirname(output_file)
+        os.makedirs(tmp_dir, exist_ok=True)
+
         # Prepare arguments mimicking CLI usage
         test_args = [
             "getmyancestors",
@@ -142,6 +146,9 @@ class TestFullIntegration(unittest.TestCase):
             os.remove(output_file)
         if os.path.exists(settings_file):
             os.remove(settings_file)
+        # Also clean up the .tmp directory if it's empty
+        if os.path.exists(tmp_dir) and not os.listdir(tmp_dir):
+            os.rmdir(tmp_dir)
 
 
 if __name__ == "__main__":
