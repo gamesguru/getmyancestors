@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "getmyancestors"
 description = "Retrieve GEDCOM data from FamilySearch Tree"
@@ -21,24 +25,29 @@ dependencies = [
     "requests==2.32.3",
     "fake-useragent==2.0.3",
     "geocoder==1.38.1",
-    "requests-ratelimiter==0.7.0"
+    "requests-ratelimiter==0.7.0",
+    "requests-cache"  # Added missing dependency
 ]
 dynamic = ["version", "readme"]
+
+[project.urls]
+HomePage = "https://github.com/Linekio/getmyancestors"
+
+[project.scripts]
+getmyancestors = "getmyancestors.getmyanc:main"
+mergemyancestors = "getmyancestors.mergemyanc:main"
+fstogedcom = "getmyancestors.fstogedcom:main"
+
+[tool.setuptools]
+# Use find packages with exclude pattern
+packages.find = {exclude = ["http_cache", "http_cache.*"]}
 
 [tool.setuptools.dynamic]
 version = {attr = "getmyancestors.__version__"}
 readme = {file = ["README.md"]}
 
-[project.urls]
-HomePage = "https://github.com/Linekio/getmyancestors"
-
 [tool.setuptools.package-data]
 getmyancestors = ["fstogedcom.png"]
-
-[project.scripts]
-getmyancestors = "getmyancestors.getmyancestors:main"
-mergemyancestors = "getmyancestors.mergemyancestors:main"
-fstogedcom = "getmyancestors.fstogedcom:main"
 
 # Linting configs
 
