@@ -31,17 +31,12 @@ jobs:
         with:
           python-version: 3
           cache: "pip" # caching pip dependencies
-          cache-dependency-path: "**/*requirements*.txt"
+          cache-dependency-path: "**/pyproject.toml"
           # update-environment: false
 
-      - name: Install requirements
+      - name: Install package with development dependencies
         run: |
-          pip install -r requirements.txt
-          pip install -r .requirements-lint.txt
-
-          # NOTE: pytest is needed to lint the folder: "tests/"
-          # pip install -r requirements-test.txt
-
+          pip install ".[dev]"
       - name: format
         run: make format
 
