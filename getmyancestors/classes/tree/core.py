@@ -983,14 +983,16 @@ class Tree:
         """add parents relationships
         :param fids: a set of fids
         """
+        # Materialize once to avoid exhausting iterator
+        fids_list = [f for f in fids if f in self.indi]
         parents = set()
-        for fid in [f for f in fids if f in self.indi]:
+        for fid in fids_list:
             for couple in self.indi[fid].parents:
                 parents |= set(couple)
         if parents:
             parents -= set(self.exclude)
             self.add_indis(set(filter(None, parents)))
-        for fid in [f for f in fids if f in self.indi]:
+        for fid in fids_list:
             for father, mother in self.indi[fid].parents:
                 self.add_trio(
                     self.indi.get(father) if father else None,
@@ -1178,11 +1180,11 @@ class Tree:
         resname.text = self.display_name
 
         people = ET.SubElement(root, "people")
-        for indi in sorted(self.indi.values(), key=lambda x: x.id):
+        for indi in sorted(self.indi.values(), key=lambda x: str(x.id or "")):
             indi.printxml(people)
 
         families = ET.SubElement(root, "families")
-        for fam in sorted(self.fam.values(), key=lambda x: x.id):
+        for fam in sorted(self.fam.values(), key=lambda x: str(x.id or "")):
             fam.printxml(families)
 
         events = ET.SubElement(root, "events")

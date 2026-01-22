@@ -197,9 +197,8 @@ class GMASession(requests.Session):
         # 1. Check external license file
         # We store license acceptance in a separate JSON file so it survives cache clearing
         license_file = os.path.join(
-            os.path.dirname(self.db_path), "..", "license-agreement.json"
+            os.path.dirname(self.db_path), "license-agreement.json"
         )
-        license_file = os.path.abspath(license_file)
 
         if os.path.exists(license_file):
             try:
@@ -267,10 +266,7 @@ class GMASession(requests.Session):
                 "auth": auth_header,
             }
             # Save to separate JSON file
-            cookie_file = os.path.join(
-                os.path.dirname(self.db_path), "..", "cookies.json"
-            )
-            cookie_file = os.path.abspath(cookie_file)
+            cookie_file = os.path.join(os.path.dirname(self.db_path), "cookies.json")
 
             with open(cookie_file, "w", encoding="utf-8") as f:
                 json.dump(data, f)
@@ -282,8 +278,7 @@ class GMASession(requests.Session):
 
     def load_cookies(self):
         """load cookies and authorization header from JSON"""
-        cookie_file = os.path.join(os.path.dirname(self.db_path), "..", "cookies.json")
-        cookie_file = os.path.abspath(cookie_file)
+        cookie_file = os.path.join(os.path.dirname(self.db_path), "cookies.json")
 
         if os.path.exists(cookie_file):
             try:

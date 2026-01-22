@@ -111,7 +111,11 @@ def main(
 
             # Deduplicate names by string representation
             def merge_names(target_set, source_set):
-                target_set.update(source_set)
+                existing_names = {str(n) for n in target_set}
+                for n in source_set:
+                    if str(n) not in existing_names:
+                        target_set.add(n)
+                        existing_names.add(str(n))
 
             # Helper for whitespace normalization in quotes
             def norm_space(s):
