@@ -1,3 +1,4 @@
-from getmyancestors import getmyancestors
+from .getmyanc import app
 
-getmyancestors.main()
+if __name__ == "__main__":
+    app()

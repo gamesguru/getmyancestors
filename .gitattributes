@@ -1,0 +1,2 @@
+# SQLite files use git-sqlite-filter for readable diffs
+*.sqlite filter=sqlite diff=sqlite

@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "getmyancestors"
 description = "Retrieve GEDCOM data from FamilySearch Tree"
@@ -18,23 +22,143 @@ classifiers = [
 dependencies = [
     "babelfish==0.6.1",
     "diskcache==5.6.3",
-    "requests==2.32.3",
-    "fake-useragent==2.0.3",
-    "requests-ratelimiter==0.7.0"
+    "requests==2.32.5",
+    "fake-useragent==2.2.0",
+    "geocoder==1.38.1",
+    "requests-ratelimiter==0.8.0",
+    "requests-cache==1.2.1",
+    "typer>=0.9.0,<0.21.0",
 ]
 dynamic = ["version", "readme"]
+
+[project.urls]
+HomePage = "https://github.com/Linekio/getmyancestors"
+
+[project.scripts]
+getmyancestors = "getmyancestors.getmyanc:app"
+mergemyancestors = "getmyancestors.mergemyanc:app"
+fstogedcom = "getmyancestors.fstogedcom:main"
+
+[project.optional-dependencies]
+dev = [
+    "black==25.12.0",
+    "coverage==7.13.1",
+    "flake8==7.3.0",
+    "isort==7.0.0",
+    "librt==0.7.7",
+    "mypy==1.19.1",
+    "pylint==4.0.4",
+    "pytest==9.0.2",
+    "ruff==0.14.10",
+    "types-requests==2.32.4.20260107",
+]
+
+[tool.setuptools]
+# Use find packages with exclude pattern
+packages.find = {exclude = ["http_cache", "http_cache.*"]}
 
 [tool.setuptools.dynamic]
 version = {attr = "getmyancestors.__version__"}
 readme = {file = ["README.md"]}
 
-[project.urls]
-HomePage = "https://github.com/Linekio/getmyancestors"
-
 [tool.setuptools.package-data]
 getmyancestors = ["fstogedcom.png"]
 
-[project.scripts]
-getmyancestors = "getmyancestors.getmyancestors:main"
-mergemyancestors = "getmyancestors.mergemyancestors:main"
-fstogedcom = "getmyancestors.fstogedcom:main"
+# Linting configs
+
+[tool.isort]
+line_length = 88
+known_first_party = "getmyancestors"
+
+# See: https://copdips.com/2020/04/making-isort-compatible-with-black.html
+multi_line_output = 3
+include_trailing_comma = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py37" # Lowest supported python version
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = Pyflakes
+# B = bugbear
+select = ["E", "F", "W", "B"]
+ignore = [
+    "E262", # inline comment should start with '# '
+    "E501", # Line too long
+]
+
+[tool.ruff.lint.per-file-ignores]  # Temporary, hopefully
+"__init__.py" = ["F401"]
+"getmyancestors/classes/gedcom.py" = ["E203"]
+"getmyancestors/classes/tree.py" = ["E203"]
+"getmyancestors/classes/translation.py" = ["E501"]
+"getmyancestors/getmyanc.py" = ["B008"]
+"getmyancestors/mergemyanc.py" = ["B008"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# Performance optimization for Pylint
+[tool.pylint.main]
+jobs = 0  # Use all available CPUs
+fail-under = 10.00
+
+[tool.pylint.messages_control]
+disable = [
+    "fixme",
+    "consider-using-f-string",
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "duplicate-code",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "too-many-instance-attributes",
+    "too-many-branches",
+    "too-many-statements",
+    "line-too-long",
+    "use-dict-literal",
+    "too-many-locals",
+    "too-many-ancestors",
+    "broad-exception-caught",
+    "too-many-return-statements",
+    "too-many-nested-blocks",
+]
+
+# Performance optimization for Mypy
+[tool.mypy]
+incremental = true
+cache_dir = ".mypy_cache"
+ignore_missing_imports = true
+check_untyped_defs = true
+[[tool.mypy.overrides]]
+module = "getmyancestors.classes.gui"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+# See: https://docs.pytest.org/en/7.1.x/reference/customize.html
+testpaths = ["getmyancestors/tests"]
+
+[tool.coverage.run]
+# See: https://coverage.readthedocs.io/en/7.2.2/config.html#run
+command_line = "-m pytest -svv"
+source = ["getmyancestors"]
+data_file = ".tmp/.coverage"
+
+[tool.coverage.report]
+fail_under = 45.00
+precision = 2
+
+show_missing = true
+skip_empty = true
+skip_covered = true
+
+omit = [
+    "getmyancestors/classes/gui.py",  # not part of CLI tests (yet)
+    "getmyancestors/fstogedcom.py",   # GUI tool that requires Tkinter
+    "**/tests/**"  # do NOT show coverage tests... redundant
+]
+
+exclude_lines = ["pragma: no cover"]

@@ -1,15 +1,27 @@
-# mergemyancestors classes
+import os
+import sys
+from typing import Optional
+
+from getmyancestors.classes.constants import FACT_TYPES, ORDINANCES
 from getmyancestors.classes.tree import (
-    Indi,
     Fact,
     Fam,
+    Indi,
     Memorie,
     Name,
     Note,
     Ordinance,
     Source,
 )
-from getmyancestors.classes.constants import FACT_TYPES, ORDINANCES
+
+
+def _warn(msg: str):
+    """Write a warning message to stderr with optional color (if TTY)."""
+    use_color = sys.stderr.isatty() or os.environ.get("FORCE_COLOR", "")
+    if use_color:
+        sys.stderr.write(f"\033[33m{msg}\033[0m\n")
+    else:
+        sys.stderr.write(f"{msg}\n")
 
 
 class Gedcom:
@@ -21,8 +33,8 @@ class Gedcom:
         self.tree = tree
         self.level = 0
         self.pointer = None
-        self.tag = None
-        self.data = None
+        self.tag: Optional[str] = None
+        self.data: Optional[str] = None
         self.flag = False
         self.indi = dict()
         self.fam = dict()
@@ -34,22 +46,22 @@ class Gedcom:
     def __parse(self):
         """Parse the GEDCOM file into self.tree"""
         while self.__get_line():
-            if self.tag == "INDI":
-                self.num = int(self.pointer[2 : len(self.pointer) - 1])
+            if self.tag == "INDI" and self.pointer:
+                self.num = self.pointer[2 : len(self.pointer) - 1]
                 self.indi[self.num] = Indi(tree=self.tree, num=self.num)
                 self.__get_indi()
-            elif self.tag == "FAM":
-                self.num = int(self.pointer[2 : len(self.pointer) - 1])
+            elif self.tag == "FAM" and self.pointer:
+                self.num = self.pointer[2 : len(self.pointer) - 1]
                 if self.num not in self.fam:
                     self.fam[self.num] = Fam(tree=self.tree, num=self.num)
                 self.__get_fam()
-            elif self.tag == "NOTE":
-                self.num = int(self.pointer[2 : len(self.pointer) - 1])
+            elif self.tag == "NOTE" and self.pointer:
+                self.num = self.pointer[2 : len(self.pointer) - 1]
                 if self.num not in self.note:
                     self.note[self.num] = Note(tree=self.tree, num=self.num)
                 self.__get_note()
             elif self.tag == "SOUR" and self.pointer:
-                self.num = int(self.pointer[2 : len(self.pointer) - 1])
+                self.num = self.pointer[2 : len(self.pointer) - 1]
                 if self.num not in self.sour:
                     self.sour[self.num] = Source(num=self.num)
                 self.__get_source()
@@ -107,16 +119,19 @@ class Gedcom:
             elif self.tag == "SLGC":
                 self.indi[self.num].sealing_child = self.__get_ordinance()
             elif self.tag == "FAMS":
-                self.indi[self.num].fams_num.add(int(self.data[2 : len(self.data) - 1]))
+                if self.data:
+                    self.indi[self.num].fams_num.add(self.data[2 : len(self.data) - 1])
             elif self.tag == "FAMC":
-                self.indi[self.num].famc_num.add(int(self.data[2 : len(self.data) - 1]))
+                if self.data:
+                    self.indi[self.num].famc_num.add(self.data[2 : len(self.data) - 1])
             elif self.tag == "_FSFTID":
                 self.indi[self.num].fid = self.data
             elif self.tag == "NOTE":
-                num = int(self.data[2 : len(self.data) - 1])
-                if num not in self.note:
-                    self.note[num] = Note(tree=self.tree, num=num)
-                self.indi[self.num].notes.add(self.note[num])
+                if self.data:
+                    num = self.data[2 : len(self.data) - 1]
+                    if num not in self.note:
+                        self.note[num] = Note(tree=self.tree, num=num)
+                    self.indi[self.num].notes.add(self.note[num])
             elif self.tag == "SOUR":
                 self.indi[self.num].sources.add(self.__get_link_source())
             elif self.tag == "OBJE":
@@ -127,11 +142,14 @@ class Gedcom:
         """Parse a family"""
         while self.__get_line() and self.level > 0:
             if self.tag == "HUSB":
-                self.fam[self.num].husb_num = int(self.data[2 : len(self.data) - 1])
+                if self.data:
+                    self.fam[self.num].husb_num = self.data[2 : len(self.data) - 1]
             elif self.tag == "WIFE":
-                self.fam[self.num].wife_num = int(self.data[2 : len(self.data) - 1])
+                if self.data:
+                    self.fam[self.num].wife_num = self.data[2 : len(self.data) - 1]
             elif self.tag == "CHIL":
-                self.fam[self.num].chil_num.add(int(self.data[2 : len(self.data) - 1]))
+                if self.data:
+                    self.fam[self.num].chil_num.add(self.data[2 : len(self.data) - 1])
             elif self.tag in FACT_TYPES:
                 self.fam[self.num].facts.add(self.__get_fact())
             elif self.tag == "SLGS":
@@ -139,10 +157,11 @@ class Gedcom:
             elif self.tag == "_FSFTID":
                 self.fam[self.num].fid = self.data
             elif self.tag == "NOTE":
-                num = int(self.data[2 : len(self.data) - 1])
-                if num not in self.note:
-                    self.note[num] = Note(tree=self.tree, num=num)
-                self.fam[self.num].notes.add(self.note[num])
+                if self.data:
+                    num = self.data[2 : len(self.data) - 1]
+                    if num not in self.note:
+                        self.note[num] = Note(tree=self.tree, num=num)
+                    self.fam[self.num].notes.add(self.note[num])
             elif self.tag == "SOUR":
                 self.fam[self.num].sources.add(self.__get_link_source())
         self.flag = True
@@ -171,13 +190,14 @@ class Gedcom:
                     added = True
             elif self.tag == "NICK":
                 nick = Name()
-                nick.given = self.data
+                nick.given = self.data or ""
                 self.indi[self.num].nicknames.add(nick)
             elif self.tag == "NOTE":
-                num = int(self.data[2 : len(self.data) - 1])
-                if num not in self.note:
-                    self.note[num] = Note(tree=self.tree, num=num)
-                name.note = self.note[num]
+                if self.data:
+                    num = self.data[2 : len(self.data) - 1]
+                    if num not in self.note:
+                        self.note[num] = Note(tree=self.tree, num=num)
+                    name.note = self.note[num]
         if not added:
             self.indi[self.num].birthnames.add(name)
         self.flag = True
@@ -194,21 +214,22 @@ class Gedcom:
             if self.tag == "DATE":
                 fact.date = self.__get_text()
             elif self.tag == "PLAC":
-                fact.place = self.__get_text()
+                fact.place = self.tree.ensure_place(self.__get_text())
             elif self.tag == "MAP":
                 fact.map = self.__get_map()
             elif self.tag == "NOTE":
-                if self.data[:12] == "Description:":
+                if self.data and self.data[:12] == "Description:":
                     fact.value = self.data[13:]
                     continue
-                num = int(self.data[2 : len(self.data) - 1])
-                if num not in self.note:
-                    self.note[num] = Note(tree=self.tree, num=num)
-                fact.note = self.note[num]
+                if self.data:
+                    num = self.data[2 : len(self.data) - 1]
+                    if num not in self.note:
+                        self.note[num] = Note(tree=self.tree, num=num)
+                    fact.note = self.note[num]
             elif self.tag == "CONT":
-                fact.value += "\n" + self.data
+                fact.value = (fact.value or "") + "\n" + (self.data or "")
             elif self.tag == "CONC":
-                fact.value += self.data
+                fact.value = (fact.value or "") + (self.data or "")
         self.flag = True
         return fact
 
@@ -226,12 +247,12 @@ class Gedcom:
 
     def __get_text(self):
         """Parse a multiline text"""
-        text = self.data
+        text = self.data or ""
         while self.__get_line():
             if self.tag == "CONT":
-                text += "\n" + self.data
+                text += "\n" + (self.data if self.data else "")
             elif self.tag == "CONC":
-                text += self.data
+                text += self.data if self.data else ""
             else:
                 break
         self.flag = True
@@ -253,15 +274,19 @@ class Gedcom:
                 else:
                     self.tree.sources[self.data] = self.sour[self.num]
             elif self.tag == "NOTE":
-                num = int(self.data[2 : len(self.data) - 1])
-                if num not in self.note:
-                    self.note[num] = Note(tree=self.tree, num=num)
-                self.sour[self.num].notes.add(self.note[num])
+                if self.data:
+                    num = self.data[2 : len(self.data) - 1]
+                    if num not in self.note:
+                        self.note[num] = Note(tree=self.tree, num=num)
+                    self.sour[self.num].notes.add(self.note[num])
         self.flag = True
 
     def __get_link_source(self):
         """Parse a link to a source"""
-        num = int(self.data[2 : len(self.data) - 1])
+        num = "0"
+        if self.data:
+            num = self.data[2 : len(self.data) - 1]
+
         if num not in self.sour:
             self.sour[num] = Source(num=num)
         page = None
@@ -298,28 +323,54 @@ class Gedcom:
             elif self.tag == "STAT":
                 ordinance.status = ORDINANCES[self.data]
             elif self.tag == "FAMC":
-                num = int(self.data[2 : len(self.data) - 1])
-                if num not in self.fam:
-                    self.fam[num] = Fam(tree=self.tree, num=num)
-                ordinance.famc = self.fam[num]
+                if self.data:
+                    num = self.data[2 : len(self.data) - 1]
+                    if num not in self.fam:
+                        self.fam[num] = Fam(tree=self.tree, num=num)
+                    ordinance.famc = self.fam[num]
         self.flag = True
         return ordinance
 
     def __add_id(self):
         """Reset GEDCOM identifiers"""
-        for num in self.fam:
-            if self.fam[num].husb_num:
-                self.fam[num].husb_fid = self.indi[self.fam[num].husb_num].fid
-            if self.fam[num].wife_num:
-                self.fam[num].wife_fid = self.indi[self.fam[num].wife_num].fid
-            for chil in self.fam[num].chil_num:
-                self.fam[num].chil_fid.add(self.indi[chil].fid)
-        for num in self.indi:
-            for famc in self.indi[num].famc_num:
-                self.indi[num].famc_fid.add(
-                    (self.fam[famc].husb_fid, self.fam[famc].wife_fid)
+        # Set fallback fid from GEDCOM pointer if _FSFTID was not present
+        for num, indi in self.indi.items():
+            if indi.fid is None:
+                name_str = str(indi.name) if indi.name else "Unknown"
+                _warn(
+                    f"Warning: Individual @I{num}@ ({name_str}) missing _FSFTID tag, "
+                    f"using GEDCOM pointer as fallback."
                 )
-            for fams in self.indi[num].fams_num:
-                self.indi[num].fams_fid.add(
-                    (self.fam[fams].husb_fid, self.fam[fams].wife_fid)
+                indi.fid = num  # Use GEDCOM pointer ID as fallback
+
+        for num, fam in self.fam.items():
+            if fam.fid is None:
+                husb_name = "Unknown"
+                if fam.husb_num and fam.husb_num in self.indi:
+                    h = self.indi[fam.husb_num]
+                    husb_name = str(h.name) if h.name else "Unknown"
+
+                wife_name = "Unknown"
+                if fam.wife_num and fam.wife_num in self.indi:
+                    w = self.indi[fam.wife_num]
+                    wife_name = str(w.name) if w.name else "Unknown"
+
+                _warn(
+                    f"Warning: Family @F{num}@ ({husb_name} & {wife_name}) missing _FSFTID tag, "
+                    f"using GEDCOM pointer as fallback."
                 )
+                fam.fid = num  # Use GEDCOM pointer ID as fallback
+
+        for _num, fam in self.fam.items():
+            if fam.husb_num:
+                fam.husb_fid = self.indi[fam.husb_num].fid
+            if fam.wife_num:
+                fam.wife_fid = self.indi[fam.wife_num].fid
+            for chil in fam.chil_num:
+                fam.chil_fid.add(self.indi[chil].fid)
+        for _num, indi in self.indi.items():
+            for famc in indi.famc_num:
+                # Store fam.fid instead of (husb, wife) tuple for consistent keying
+                indi.famc_fid.add(self.fam[famc].fid)
+            for fams in indi.fams_num:
+                indi.fams_fid.add(self.fam[fams].fid)

@@ -4,11 +4,11 @@
 MAX_PERSONS = 200
 
 FACT_TAG_EVENT_TYPE = {
-    'BIRT': 'Birth',
-    'DEAT': 'Death',
-    'BURI': 'Burial',
-    'CREM': 'Cremation',
-    'NATU': 'Naturalization',
+    "BIRT": "Birth",
+    "DEAT": "Death",
+    "BURI": "Burial",
+    "CREM": "Cremation",
+    "NATU": "Naturalization",
 }
 
 FACT_TAGS = {
@@ -32,6 +32,7 @@ FACT_TAGS = {
     "http://gedcomx.org/Cremation": "CREM",
     "http://gedcomx.org/Caste": "CAST",
     "http://gedcomx.org/Nationality": "NATI",
+    "http://gedcomx.org/Immigration": "IMMI",
 }
 
 FACT_EVEN = {
@@ -52,8 +53,9 @@ ORDINANCES_STATUS = {
     "NotNeeded": "INFANT",
 }
 
+
 # mergemyancestors constants and functions
-def reversed_dict(d):
+def reversed_dict(d: dict) -> dict:
     return {val: key for key, val in d.items()}
 
 
