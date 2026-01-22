@@ -2,7 +2,8 @@
 name: ci
 
 "on":
-  push: {}
+  push: [master, main]
+  pull_request: [master, main]
 
 permissions:
   contents: read
@@ -46,6 +47,11 @@ jobs:
       - name: Format Check
         run: make format
         if: runner.os == 'Linux'
+
+      - name: Check Clean After Format
+        if: runner.os == 'Linux'
+        run: |
+          git diff --exit-code || (echo "❌ Code not formatted. Run 'make format' locally." && exit 1)
 
       - name: Lint
         run: make lint

@@ -132,7 +132,7 @@ class GMASession(requests.Session):
         )
         os.makedirs(cache_dir, exist_ok=True)
         self.db_path = os.path.join(cache_dir, "session.sqlite")
-        # Cookie file is now stored in cache directory too
+        # Cookie file is now stored in cache directory
         self.cookie_file = os.path.join(cache_dir, "cookies.json")
         self._init_db()
         self.check_license()
@@ -290,23 +290,6 @@ class GMASession(requests.Session):
                     return True
             except Exception as e:
                 self.write_log("Error loading session from JSON: " + str(e))
-
-        # 2. Legacy Migration: checking old cookie file if it exists
-        if os.path.exists(self.cookie_file):
-            try:
-                with open(self.cookie_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                self._apply_session_data(data)
-                # We do NOT auto-save to new JSON here to respect read-only/security.
-                # It will save to new JSON only on next login/save_cookies call.
-                if self.verbose:
-                    self.write_log(
-                        "Session loaded (migrated) from legacy JSON: "
-                        + self.cookie_file
-                    )
-                return True
-            except Exception as e:
-                self.write_log("Error loading legacy cookie file: " + str(e))
 
         return False
 
