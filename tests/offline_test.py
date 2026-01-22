@@ -301,11 +301,15 @@ def test_offline():
     else:
         print(f"✓ Marie Curie (Part 2) lines verified ({l_part2}).")
 
-    if l_merged != exp_merged:
-        print(f"❌ Assertion Failed: Merged line count {l_merged} != {exp_merged}")
+    # Check merged file with exact diff (no line count tolerance)
+    diff_result = subprocess.run(
+        ["git", "diff", "--no-index", "--exit-code", "--color=always", str(merged), str(ARTIFACTS_DIR / "merged_scientists.ged")],
+    )
+    if diff_result.returncode != 0:
+        print(f"❌ Merged file differs from artifact (see diff above)")
         failed = True
     else:
-        print(f"✓ Merged lines verified ({l_merged}).")
+        print(f"✓ Merged file matches artifact exactly ({l_merged} lines).")
 
     if failed:
         sys.exit(1)

@@ -109,13 +109,28 @@ def main(
 
             ged = Gedcom(file, tree)
 
-            # Deduplicate names by string representation
+            # Deduplicate names by string representation (deterministic: first alphabetically wins)
             def merge_names(target_set, source_set):
-                existing_names = {str(n) for n in target_set}
-                for n in source_set:
-                    if str(n) not in existing_names:
+                # Combine all names and sort deterministically
+                all_names = list(target_set) + list(source_set)
+                all_names.sort(key=lambda x: (
+                    str(x),
+                    x.given or "",
+                    x.surname or "",
+                    x.prefix or "",
+                    x.suffix or "",
+                    x.kind or "",
+                    str(x.alternative) if hasattr(x, 'alternative') else "",
+                    x.note.text if hasattr(x, 'note') and x.note else "",
+                ))
+                # Rebuild target_set keeping first occurrence by string
+                target_set.clear()
+                seen = set()
+                for n in all_names:
+                    s = str(n)
+                    if s not in seen:
                         target_set.add(n)
-                        existing_names.add(str(n))
+                        seen.add(s)
 
             # Helper for whitespace normalization in quotes
             def norm_space(s):
