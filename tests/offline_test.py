@@ -132,7 +132,6 @@ def test_offline():
     expectations = load_expectations()
     exp_ada = expectations.get("EXPECTED_ADA_LINES", 0)
     exp_marie = expectations.get("EXPECTED_MARIE_LINES", 0)
-    exp_merged = expectations.get("EXPECTED_MERGED_LINES", 0)
 
     # 2. Setup Cache
     setup_cache()
@@ -303,10 +302,19 @@ def test_offline():
 
     # Check merged file with exact diff (no line count tolerance)
     diff_result = subprocess.run(
-        ["git", "diff", "--no-index", "--exit-code", "--color=always", str(merged), str(ARTIFACTS_DIR / "merged_scientists.ged")],
+        [
+            "git",
+            "diff",
+            "--no-index",
+            "--exit-code",
+            "--color=always",
+            str(merged),
+            str(ARTIFACTS_DIR / "merged_scientists.ged"),
+        ],
+        check=False,
     )
     if diff_result.returncode != 0:
-        print(f"❌ Merged file differs from artifact (see diff above)")
+        print("❌ Merged file differs from artifact (see diff above)")
         failed = True
     else:
         print(f"✓ Merged file matches artifact exactly ({l_merged} lines).")

@@ -98,6 +98,35 @@ def main(
         # Default to stdin
         input_handles.append(sys.stdin)
 
+    # Helper for whitespace normalization in quotes
+    def norm_space(s):
+        return " ".join(s.split()) if s else ""
+
+    # Deduplicate names by string representation (deterministic: first alphabetically wins)
+    def merge_names(target_set, source_set):
+        # Combine all names and sort deterministically
+        all_names = list(target_set) + list(source_set)
+        all_names.sort(
+            key=lambda x: (
+                str(x),
+                x.given or "",
+                x.surname or "",
+                x.prefix or "",
+                x.suffix or "",
+                x.kind or "",
+                str(x.alternative) if hasattr(x, "alternative") else "",
+                x.note.text if hasattr(x, "note") and x.note else "",
+            )
+        )
+        # Rebuild target_set keeping first occurrence by string
+        target_set.clear()
+        seen = set()
+        for n in all_names:
+            s = str(n)
+            if s not in seen:
+                target_set.add(n)
+                seen.add(s)
+
     try:
         # read the GEDCOM data
         for file in input_handles:
@@ -108,33 +137,6 @@ def main(
                 filename = os.path.basename(filename)
 
             ged = Gedcom(file, tree)
-
-            # Deduplicate names by string representation (deterministic: first alphabetically wins)
-            def merge_names(target_set, source_set):
-                # Combine all names and sort deterministically
-                all_names = list(target_set) + list(source_set)
-                all_names.sort(key=lambda x: (
-                    str(x),
-                    x.given or "",
-                    x.surname or "",
-                    x.prefix or "",
-                    x.suffix or "",
-                    x.kind or "",
-                    str(x.alternative) if hasattr(x, 'alternative') else "",
-                    x.note.text if hasattr(x, 'note') and x.note else "",
-                ))
-                # Rebuild target_set keeping first occurrence by string
-                target_set.clear()
-                seen = set()
-                for n in all_names:
-                    s = str(n)
-                    if s not in seen:
-                        target_set.add(n)
-                        seen.add(s)
-
-            # Helper for whitespace normalization in quotes
-            def norm_space(s):
-                return " ".join(s.split()) if s else ""
 
             # add information about individuals
             new_indi = 0
