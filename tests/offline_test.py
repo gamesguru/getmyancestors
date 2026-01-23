@@ -106,7 +106,13 @@ def check_diff(generated_path, artifact_path, label):
         print(f"✓ {label} matches artifact exactly.")
         return True
 
-    print(f"⚠️  {label} differs from artifact. Showing diff (first 10 lines):")
+    print(f"⚠️  {label} differs from artifact. Showing diff (first 100 lines):")
+    subprocess.run(
+        f"diff --color=always {generated_path} {artifact_path} | head -100",
+        shell=True,
+        check=False,
+    )
+    print("...")
     print("Diff Stat:")
     subprocess.run(
         [
@@ -118,10 +124,6 @@ def check_diff(generated_path, artifact_path, label):
             str(artifact_path),
         ],
         check=False,
-    )
-    print("...")
-    subprocess.run(
-        ["diff", "--color=always", str(generated_path), str(artifact_path)], check=False
     )
     print(f"❌ Verified failed for {label}")
     return False
@@ -308,6 +310,18 @@ def test_offline():
             "--no-index",
             "--exit-code",
             "--color=always",
+            str(merged),
+            str(ARTIFACTS_DIR / "merged_scientists.ged"),
+        ],
+        check=False,
+    )
+    print("Diff Stat:")
+    subprocess.run(
+        [
+            "git",
+            "diff",
+            "--no-index",
+            "--stat",
             str(merged),
             str(ARTIFACTS_DIR / "merged_scientists.ged"),
         ],

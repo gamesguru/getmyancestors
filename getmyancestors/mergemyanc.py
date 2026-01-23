@@ -367,7 +367,7 @@ def main(
             for chil_fid in fam.chil_fid:
                 if chil_fid in tree.indi:
                     fam.children.add(tree.indi[chil_fid])
-                    tree.indi[chil_fid].famc.add(fam)
+                    tree.indi[chil_fid].famc.add((fam, None))
 
         # compute number for family relationships and print GEDCOM file
         tree.reset_num()

@@ -1,7 +1,5 @@
 """Core classes: Indi, Fam, Tree"""
 
-# pylint: disable=too-many-lines
-
 import asyncio
 import hashlib
 import os
@@ -10,6 +8,7 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from enum import Enum
 from typing import Any, BinaryIO, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 # global imports
@@ -21,15 +20,50 @@ from requests_cache import CachedSession
 from getmyancestors import __version__
 from getmyancestors.classes.constants import MAX_PERSONS
 from getmyancestors.classes.session import GMASession
+from getmyancestors.classes.tree.utils import warn
 
 from .elements import Citation, Name, Ordinance, Place
 from .records import Fact, Memorie, Note, Source
 from .utils import GEONAME_FEATURE_MAP, cont
 
+# pylint: disable=too-many-lines
+
+
+class ParentRelType(Enum):
+    """Parent-child relationship type for GEDCOM PEDI tag"""
+
+    BIRTH = "birth"
+    ADOPTED = "adopted"
+    STEP = "step"
+    FOSTER = "foster"
+
+    @classmethod
+    def from_fs_type(
+        cls, facts: Optional[List[Dict[str, Any]]]
+    ) -> Optional["ParentRelType"]:
+        """Convert FamilySearch relationship facts to ParentRelType"""
+        if not facts:
+            return None
+
+        mapping = {
+            "http://gedcomx.org/BiologicalParent": cls.BIRTH,
+            "http://gedcomx.org/AdoptiveParent": cls.ADOPTED,
+            "http://gedcomx.org/StepParent": cls.STEP,
+            "http://gedcomx.org/FosterParent": cls.FOSTER,
+        }
+
+        for fact in facts:
+            f_type = fact.get("type")
+            if f_type in mapping:
+                return mapping[f_type]
+
+        # Failed to find a match, return unknown type
+        return None
+
 
 class Indi:
     """GEDCOM individual class
-    :param fid' FamilySearch id
+    :param fid: FamilySearch id
     :param tree: a tree object
     :param num: the GEDCOM identifier
     """
@@ -49,7 +83,7 @@ class Indi:
         self.tree = tree
         self.num_prefix = "I"
         self.origin_file: Optional[str] = None
-        self.famc: Set["Fam"] = set()
+        self.famc: Set[Tuple["Fam", Optional[ParentRelType]]] = set()
         self.fams: Set["Fam"] = set()
         self.famc_fid: Set[str] = set()
         self.fams_fid: Set[str] = set()
@@ -60,9 +94,15 @@ class Indi:
         self.name: Optional[Name] = None
         self.gender: Optional[str] = None
         self.living: Optional[bool] = None
-        self.parents: Set[Tuple[Optional[str], Optional[str]]] = (
-            set()
-        )  # (father_id, mother_id)
+        # (father_id, mother_id, father_rel_type, mother_rel_type)
+        self.parents: Set[
+            Tuple[
+                Optional[str],
+                Optional[str],
+                Optional[ParentRelType],
+                Optional[ParentRelType],
+            ]
+        ] = set()
         self.spouses: Set[Tuple[Optional[str], Optional[str], Optional[str]]] = (
             set()
         )  # (person1, person2, relfid)
@@ -189,9 +229,9 @@ class Indi:
         """add family fid (for spouse or parent)"""
         self.fams.add(fam)
 
-    def add_famc(self, fam: "Fam"):
-        """add family fid (for child)"""
-        self.famc.add(fam)
+    def add_famc(self, fam: "Fam", rel_type: Optional[ParentRelType] = None):
+        """add family fid (for child) with optional relationship type"""
+        self.famc.add((fam, rel_type))
 
     def get_notes(self):
         """retrieve individual notes"""
@@ -299,7 +339,7 @@ class Indi:
                 ET.SubElement(person, "parentin", hlink=fam.handle)
 
         if self.famc:
-            for fam in self.famc:
+            for fam, _rel_type in self.famc:
                 ET.SubElement(person, "childof", hlink=fam.handle)
 
         for fact in self.facts:
@@ -417,8 +457,13 @@ class Indi:
             self.sealing_child.print(file)
         for fam in sorted(self.fams, key=lambda x: x.id or ""):
             file.write("1 FAMS @F%s@\n" % fam.id)
-        for fam in sorted(self.famc, key=lambda x: x.id or ""):
+        for fam, rel_type in sorted(self.famc, key=lambda x: x[0].id or ""):
             file.write("1 FAMC @F%s@\n" % fam.id)
+            # Output PEDI tag for explicit relationship type
+            if rel_type:
+                file.write("2 PEDI %s\n" % rel_type.value)
+            else:
+                warn(f"Missing PEDI type for {self.fid} in family {fam.id}")
         # print(f'Fams Ids: {self.fams_ids}, {self.fams_fid}, {self.fams_num}', file=sys.stderr)
         # for num in self.fams_ids:
         # print(f'Famc Ids: {self.famc_ids}', file=sys.stderr)
@@ -767,8 +812,24 @@ class Tree:
                         father: str | None = rel.get("parent1", {}).get("resourceId")
                         mother: str | None = rel.get("parent2", {}).get("resourceId")
                         child: str | None = rel.get("child", {}).get("resourceId")
+
+                        # Extract relationship types from fatherFacts/motherFacts
+                        father_rel = None
+                        mother_rel = None
+                        for fact in rel.get("fatherFacts", []):
+                            if "type" in fact:
+                                father_rel = ParentRelType.from_fs_type(fact["type"])
+                                break
+                        for fact in rel.get("motherFacts", []):
+                            if "type" in fact:
+                                mother_rel = ParentRelType.from_fs_type(fact["type"])
+                                break
+
+                        # Store parent relationship with types
                         if child in self.indi:
-                            self.indi[child].parents.add((father, mother))
+                            self.indi[child].parents.add(
+                                (father, mother, father_rel, mother_rel)
+                            )
                         if father in self.indi:
                             self.indi[father].children.add((father, mother, child))
                         if mother in self.indi:
@@ -963,16 +1024,27 @@ class Tree:
     #     if (father, mother) not in self.fam:
     #         self.fam[(father, mother)] = Fam(father, mother, self)
 
-    def add_trio(self, father: Indi | None, mother: Indi | None, child: Indi | None):
+    def add_trio(
+        self,
+        father: Indi | None,
+        mother: Indi | None,
+        child: Indi | None,
+        father_rel: Optional[ParentRelType] = None,
+        mother_rel: Optional[ParentRelType] = None,
+    ):
         """add a children relationship to the family tree
-        :param father: the father fid or None
-        :param mother: the mother fid or None
-        :param child: the child fid or None
+        :param father: the father Indi or None
+        :param mother: the mother Indi or None
+        :param child: the child Indi or None
+        :param father_rel: relationship type to father (birth, step, adopted, foster)
+        :param mother_rel: relationship type to mother (birth, step, adopted, foster)
         """
         fam = self.ensure_family(father, mother)
         if child is not None:
             fam.add_child(child)
-            child.add_famc(fam)
+            # Use the more specific relationship type (default to birth if both are the same)
+            rel_type = father_rel or mother_rel
+            child.add_famc(fam, rel_type)
 
         if father is not None:
             father.add_fams(fam)
@@ -987,19 +1059,24 @@ class Tree:
         fids_list = [f for f in fids if f in self.indi]
         parents = set()
         for fid in fids_list:
-            for couple in self.indi[fid].parents:
-                parents |= set(couple)
+            for father, mother, _, _ in self.indi[fid].parents:
+                if father:
+                    parents.add(father)
+                if mother:
+                    parents.add(mother)
         if parents:
             parents -= set(self.exclude)
             self.add_indis(set(filter(None, parents)))
         for fid in fids_list:
-            for father, mother in self.indi[fid].parents:
+            for father, mother, father_rel, mother_rel in self.indi[fid].parents:
                 self.add_trio(
                     self.indi.get(father) if father else None,
                     self.indi.get(mother) if mother else None,
                     self.indi.get(fid) if fid else None,
+                    father_rel,
+                    mother_rel,
                 )
-        return set(filter(None, parents))
+        return parents
 
     def add_spouses(self, fids: Iterable[str]):
         """add spouse relationships

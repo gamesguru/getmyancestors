@@ -16,7 +16,7 @@ _help:
 
 .PHONY: test/unit
 test/unit:	##H@@ Run Unit tests only
-	$(PYTHON) -m coverage run -p -m pytest getmyancestors/tests
+	$(PYTHON) -m coverage run -p -m pytest -svv getmyancestors/tests
 
 # Installation
 .PHONY: deps
@@ -26,11 +26,11 @@ deps:	##H@@ Install dependencies
 # Installation tests
 .PHONY: test/install
 test/install:	##H@@ Run installation tests
-	$(PYTHON) -m coverage run -p -m pytest tests/test_installation.py
+	$(PYTHON) -m coverage run -p -m pytest -svv tests/test_installation.py
 
 .PHONY: test/offline
 test/offline:	##H@@ Run offline verification (requires fixtures)
-	$(PYTHON) -m pytest tests/offline_test.py
+	$(PYTHON) -m pytest -svv tests/offline_test.py
 
 
 # Generate targets for all test files (enables autocomplete)
@@ -39,7 +39,7 @@ TEST_TARGETS := $(patsubst getmyancestors/tests/%.py,test/unit/%,$(TEST_FILES))
 
 .PHONY: $(TEST_TARGETS)
 $(TEST_TARGETS): test/unit/%:
-	pytest getmyancestors/tests/$*.py -v
+	$(PYTHON) -m pytest -svv getmyancestors/tests/$*.py
 
 .PHONY: test/
 test/:	##H@@ Run unit & E2E tests
