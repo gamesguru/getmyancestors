@@ -47,13 +47,13 @@ LICENSE_AGREEMENT = """
 ================================================================================
 
 This program is free software: you can redistribute it and/or modify it under
-the terms of the GNU Affero General Public License as published by the Free Software
+the terms of the GNU General Public License as published by the Free Software
 Foundation, either version 3 of the License, or (at your option) any later
 version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 By using this software to access FamilySearch, you also agree to:
 
@@ -64,13 +64,9 @@ By using this software to access FamilySearch, you also agree to:
 5. Respect the privacy of living individuals in any downloaded data
 6. Accept that FamilySearch may revoke API access for violations
 
-DO NOT USE THE TOOL EXCESSIVELY! DOWNLOAD YOUR FAMILY'S GEDCOM AND USE IT OFFLINE.
+DO NOT USE THE TOOL EXCESSIVELY!
+DOWNLOAD YOUR FAMILY'S GEDCOM AND USE IT OFFLINE.
 BE RESPECTFUL OF FAMILYSEARCH'S SERVERS AND RESPECT THEIR TERMS OF USE.
-
-ONLY DEVELOP THE TOOL INSOFAR AS IS NECESSARY TO EITHER:
-    1. REDUCE OVERALL LOAD ON FAMILYSEARCH'S SERVERS.
-    2. IMPROVE THE USER EXPERIENCE/RESOLVE BUGS.
-DO NOT DEVELOP THE TOOL IN A WAY THAT AIDS THOSE SEEKING TO SCRAPE OR BULK EXTRACT DATA.
 
 ================================================================================
 """
@@ -136,7 +132,7 @@ class GMASession(requests.Session):
         )
         os.makedirs(cache_dir, exist_ok=True)
         self.db_path = os.path.join(cache_dir, "session.sqlite")
-        # Cookie file is now stored in cache directory
+        # Cookie file is now stored in cache directory too
         self.cookie_file = os.path.join(cache_dir, "cookies.json")
         self._init_db()
         self.check_license()
@@ -294,6 +290,23 @@ class GMASession(requests.Session):
                     return True
             except Exception as e:
                 self.write_log("Error loading session from JSON: " + str(e))
+
+        # 2. Legacy Migration: checking old cookie file if it exists
+        if os.path.exists(self.cookie_file):
+            try:
+                with open(self.cookie_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self._apply_session_data(data)
+                # We do NOT auto-save to new JSON here to respect read-only/security.
+                # It will save to new JSON only on next login/save_cookies call.
+                if self.verbose:
+                    self.write_log(
+                        "Session loaded (migrated) from legacy JSON: "
+                        + self.cookie_file
+                    )
+                return True
+            except Exception as e:
+                self.write_log("Error loading legacy cookie file: " + str(e))
 
         return False
 

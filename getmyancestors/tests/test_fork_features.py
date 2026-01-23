@@ -38,8 +38,8 @@ class TestForkFeatures(unittest.TestCase):
         i1 = Indi("I1", self.tree)
         self.tree.indi["I1"] = i1
 
-        # Manually populate parents list for I1 (father, mother, father_rel, mother_rel)
-        i1.parents = {("I2", "I3", None, None)}  # Father, Mother, no rel types
+        # Manually populate parents list for I1
+        i1.parents = {("I2", "I3")}  # Father, Mother
 
         # Case 1: No exclude
         self.tree.exclude = []

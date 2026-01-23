@@ -106,13 +106,7 @@ def check_diff(generated_path, artifact_path, label):
         print(f"✓ {label} matches artifact exactly.")
         return True
 
-    print(f"⚠️  {label} differs from artifact. Showing diff (first 100 lines):")
-    subprocess.run(
-        f"diff --color=always {generated_path} {artifact_path} | head -100",
-        shell=True,
-        check=False,
-    )
-    print("...")
+    print(f"⚠️  {label} differs from artifact. Showing diff (first 10 lines):")
     print("Diff Stat:")
     subprocess.run(
         [
@@ -125,6 +119,10 @@ def check_diff(generated_path, artifact_path, label):
         ],
         check=False,
     )
+    print("...")
+    subprocess.run(
+        ["diff", "--color=always", str(generated_path), str(artifact_path)], check=False
+    )
     print(f"❌ Verified failed for {label}")
     return False
 
@@ -134,6 +132,7 @@ def test_offline():
     expectations = load_expectations()
     exp_ada = expectations.get("EXPECTED_ADA_LINES", 0)
     exp_marie = expectations.get("EXPECTED_MARIE_LINES", 0)
+    exp_merged = expectations.get("EXPECTED_MERGED_LINES", 0)
 
     # 2. Setup Cache
     setup_cache()
@@ -156,7 +155,6 @@ def test_offline():
     env["FAMILYSEARCH_PASS"] = env.get("FAMILYSEARCH_PASS", "dummy_password")
     env["GMA_OFFLINE_MODE"] = "1"
     env["GMA_DEBUG"] = "1"
-    env["PYTHONHASHSEED"] = "0"
     if "NO_CACHE" in env:
         del env["NO_CACHE"]
 
@@ -305,31 +303,10 @@ def test_offline():
 
     # Check merged file with exact diff (no line count tolerance)
     diff_result = subprocess.run(
-        [
-            "git",
-            "diff",
-            "--no-index",
-            "--exit-code",
-            "--color=always",
-            str(merged),
-            str(ARTIFACTS_DIR / "merged_scientists.ged"),
-        ],
-        check=False,
-    )
-    print("Diff Stat:")
-    subprocess.run(
-        [
-            "git",
-            "diff",
-            "--no-index",
-            "--stat",
-            str(merged),
-            str(ARTIFACTS_DIR / "merged_scientists.ged"),
-        ],
-        check=False,
+        ["git", "diff", "--no-index", "--exit-code", "--color=always", str(merged), str(ARTIFACTS_DIR / "merged_scientists.ged")],
     )
     if diff_result.returncode != 0:
-        print("❌ Merged file differs from artifact (see diff above)")
+        print(f"❌ Merged file differs from artifact (see diff above)")
         failed = True
     else:
         print(f"✓ Merged file matches artifact exactly ({l_merged} lines).")
@@ -353,9 +330,7 @@ def test_offline():
     )
 
     if not all_matched:
-        print(
-            "❌ Offline Test Failed due to artifact mismatch (One of Part1, Part2, or Merged)"
-        )
+        print("❌ Offline Test Failed due to artifact mismatch")
         sys.exit(1)
 
     print("✅ Offline Test Complete!")

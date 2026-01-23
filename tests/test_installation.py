@@ -60,7 +60,6 @@ class TestInstallation(unittest.TestCase):
                 text=True,
                 cwd=self.project_root,
                 check=True,
-                timeout=300,  # 5 minute timeout
             )
 
             # Test that the package can be imported

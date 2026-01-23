@@ -16,7 +16,7 @@ _help:
 
 .PHONY: test/unit
 test/unit:	##H@@ Run Unit tests only
-	$(PYTHON) -m coverage run -p -m pytest -svv getmyancestors/tests
+	$(PYTHON) -m coverage run -p -m pytest getmyancestors/tests
 
 # Installation
 .PHONY: deps
@@ -26,11 +26,11 @@ deps:	##H@@ Install dependencies
 # Installation tests
 .PHONY: test/install
 test/install:	##H@@ Run installation tests
-	$(PYTHON) -m coverage run -p -m pytest -svv tests/test_installation.py
+	$(PYTHON) -m coverage run -p -m pytest tests/test_installation.py
 
 .PHONY: test/offline
 test/offline:	##H@@ Run offline verification (requires fixtures)
-	$(PYTHON) -m pytest -svv tests/offline_test.py
+	$(PYTHON) -m pytest tests/offline_test.py
 
 
 # Generate targets for all test files (enables autocomplete)
@@ -39,7 +39,7 @@ TEST_TARGETS := $(patsubst getmyancestors/tests/%.py,test/unit/%,$(TEST_FILES))
 
 .PHONY: $(TEST_TARGETS)
 $(TEST_TARGETS): test/unit/%:
-	$(PYTHON) -m pytest -svv getmyancestors/tests/$*.py
+	pytest getmyancestors/tests/$*.py -v
 
 .PHONY: test/
 test/:	##H@@ Run unit & E2E tests
@@ -52,13 +52,8 @@ test/cov:	##H@@ Combine all coverage data and show report
 
 
 REMOTE_HEAD ?= origin/master
-REMOTE_HEAD_SUBMODULE ?= origin/master
-
-PY_CHANGED_FILES_BASE ?= $(shell git diff --name-only --diff-filter=MACRU $(REMOTE_HEAD) '*.py')
-PY_CHANGED_FILES_SUBMODULE ?= $(shell cd res/testdata && git diff --name-only --diff-filter=MACRU HEAD $(REMOTE_HEAD_SUBMODULE)'*.py')
-PY_CHANGED_FILES ?= $(sort $(PY_CHANGED_FILES_BASE) $(PY_CHANGED_FILES_SUBMODULE))
-PY_CHANGED_FILES_FLAG ?= $(if $(strip $(PY_CHANGED_FILES)),1,)
-
+PY_CHANGED_FILES ?= $(shell git diff --name-only --diff-filter=MACU $(REMOTE_HEAD) '*.py')
+PY_CHANGED_FILES_FLAG ?= $(if $(PY_CHANGED_FILES),1,)
 SH_ALL_FILES ?= $(shell git ls-files '*.sh')
 PRETTIER_ALL_FILES ?= $(shell git ls-files '*.js' '*.css' '*.html' '*.md' '*.yaml' '*.yml')
 

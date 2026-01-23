@@ -1,18 +1,6 @@
 """Utility constants and functions for tree package"""
 
-import os
 import re
-import sys
-
-
-def warn(msg: str):
-    """Write a warning message to stderr with optional color (if TTY)."""
-    use_color = sys.stderr.isatty() or os.environ.get("FORCE_COLOR", "")
-    if use_color:
-        sys.stderr.write(f"\033[1;33m{msg}\033[0m\n")  # Bold yellow
-    else:
-        sys.stderr.write(f"{msg}\n")
-
 
 # Constants
 COUNTY = "County"
