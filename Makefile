@@ -52,8 +52,13 @@ test/cov:	##H@@ Combine all coverage data and show report
 
 
 REMOTE_HEAD ?= origin/master
-PY_CHANGED_FILES ?= $(shell git diff --name-only --diff-filter=MACU $(REMOTE_HEAD) '*.py')
-PY_CHANGED_FILES_FLAG ?= $(if $(PY_CHANGED_FILES),1,)
+REMOTE_HEAD_SUBMODULE ?= origin/master
+
+PY_CHANGED_FILES_BASE ?= $(shell git diff --name-only --diff-filter=MACRU $(REMOTE_HEAD) '*.py')
+PY_CHANGED_FILES_SUBMODULE ?= $(shell cd res/testdata && git diff --name-only --diff-filter=MACRU HEAD $(REMOTE_HEAD_SUBMODULE)'*.py')
+PY_CHANGED_FILES ?= $(sort $(PY_CHANGED_FILES_BASE) $(PY_CHANGED_FILES_SUBMODULE))
+PY_CHANGED_FILES_FLAG ?= $(if $(strip $(PY_CHANGED_FILES)),1,)
+
 SH_ALL_FILES ?= $(shell git ls-files '*.sh')
 PRETTIER_ALL_FILES ?= $(shell git ls-files '*.js' '*.css' '*.html' '*.md' '*.yaml' '*.yml')
 
