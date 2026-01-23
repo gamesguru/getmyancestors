@@ -148,6 +148,7 @@ dump.rdb
 !.geminiignore
 /test_debug.py
 
+
+# Local tmp dir
 .tmp/
-.tmp
 tests/cache/

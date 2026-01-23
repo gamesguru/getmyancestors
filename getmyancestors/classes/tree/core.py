@@ -175,26 +175,32 @@ class Indi:
                         self.facts.add(
                             Fact(x, self.tree, num_prefix=f"INDI_{self.fid}")
                         )
-            if "sources" in data and self.tree and self.tree.fs:
-                sources = self.tree.fs.get_url(
-                    "/platform/tree/persons/%s/sources" % self.fid
-                )
-                if sources:
-                    for quote in sources["persons"][0]["sources"]:
-                        source_id = quote["descriptionId"]
-                        source_data = next(
-                            (
-                                s
-                                for s in sources["sourceDescriptions"]
-                                if s["id"] == source_id
-                            ),
-                            None,
-                        )
-                        source = (
-                            self.tree.ensure_source(source_data)
-                            if self.tree and source_data
-                            else None
-                        )
+        if "sources" in data and self.tree and self.tree.fs:
+            sources = self.tree.fs.get_url(
+                "/platform/tree/persons/%s/sources" % self.fid
+            )
+            if sources:
+                for quote in sources["persons"][0]["sources"]:
+                    source_id = quote["descriptionId"]
+                    source_data = next(
+                        (
+                            s
+                            for s in sources["sourceDescriptions"]
+                            if s["id"] == source_id
+                        ),
+                        None,
+                    )
+                    if self.tree:
+                        if source_data:
+                            source = self.tree.ensure_source(source_data)
+                        else:
+                            existing_source = self.tree.sources.get(source_id)
+                            if existing_source:
+                                source = existing_source
+                            else:
+                                source = self.tree.ensure_source({"id": source_id})
+                    else:
+                        source = None
                         if source and self.tree:
                             citation = self.tree.ensure_citation(quote, source)
                             self.citations.add(citation)

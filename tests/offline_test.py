@@ -156,6 +156,7 @@ def test_offline():
     env["FAMILYSEARCH_PASS"] = env.get("FAMILYSEARCH_PASS", "dummy_password")
     env["GMA_OFFLINE_MODE"] = "1"
     env["GMA_DEBUG"] = "1"
+    env["PYTHONHASHSEED"] = "0"
     if "NO_CACHE" in env:
         del env["NO_CACHE"]
 
@@ -352,7 +353,9 @@ def test_offline():
     )
 
     if not all_matched:
-        print("❌ Offline Test Failed due to artifact mismatch")
+        print(
+            "❌ Offline Test Failed due to artifact mismatch (One of Part1, Part2, or Merged)"
+        )
         sys.exit(1)
 
     print("✅ Offline Test Complete!")
