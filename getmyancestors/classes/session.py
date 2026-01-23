@@ -47,13 +47,13 @@ LICENSE_AGREEMENT = """
 ================================================================================
 
 This program is free software: you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
+the terms of the GNU Affero General Public License as published by the Free Software
 Foundation, either version 3 of the License, or (at your option) any later
 version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT
 ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
 By using this software to access FamilySearch, you also agree to:
 
@@ -64,9 +64,13 @@ By using this software to access FamilySearch, you also agree to:
 5. Respect the privacy of living individuals in any downloaded data
 6. Accept that FamilySearch may revoke API access for violations
 
-DO NOT USE THE TOOL EXCESSIVELY!
-DOWNLOAD YOUR FAMILY'S GEDCOM AND USE IT OFFLINE.
+DO NOT USE THE TOOL EXCESSIVELY! DOWNLOAD YOUR FAMILY'S GEDCOM AND USE IT OFFLINE.
 BE RESPECTFUL OF FAMILYSEARCH'S SERVERS AND RESPECT THEIR TERMS OF USE.
+
+ONLY DEVELOP THE TOOL INSOFAR AS IS NECESSARY TO EITHER:
+    1. REDUCE OVERALL LOAD ON FAMILYSEARCH'S SERVERS.
+    2. IMPROVE THE USER EXPERIENCE/RESOLVE BUGS.
+DO NOT DEVELOP THE TOOL IN A WAY THAT AIDS THOSE SEEKING TO SCRAPE OR BULK EXTRACT DATA.
 
 ================================================================================
 """

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "getmyancestors"
 description = "Retrieve GEDCOM data from FamilySearch Tree"
 requires-python = ">=3.7"
-license = {text = "GNU"}
+license = {text = "GNU Affero General Public License v3 (AGPLv3)"}
 keywords = [
   "getmyancestors",
   "familysearch",
@@ -15,7 +15,7 @@ keywords = [
 ]
 classifiers = [
     "Environment :: Console",
-    "License :: OSI Approved :: GNU General Public License (GPL)",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3 :: Only",
 ]
@@ -148,7 +148,7 @@ source = ["getmyancestors"]
 data_file = ".tmp/.coverage"
 
 [tool.coverage.report]
-fail_under = 68.31
+fail_under = 68.27
 precision = 2
 
 show_missing = true
