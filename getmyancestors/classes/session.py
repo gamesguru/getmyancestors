@@ -817,10 +817,14 @@ class CachedSession(GMASession, CSession):
             self,
             cache_path,
             backend="filesystem",
+            serializer="json",
             expire_after=expire_after,
             allowable_codes=(200, 204),
             cache_control=cache_control,  # Enable HTTP conditional requests (ETag/Last-Modified)
             allow_to_fetch_missing=(not offline_mode),  # prevent fetch on miss
+        )
+        print(
+            f"DEBUG: CachedSession initialized. Backend=filesystem, Path={cache_path}, Offline={offline_mode}"
         )
         # Re-apply default headers as CSession.__init__ might have wiped them
         with self.lock:

@@ -10,6 +10,7 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from enum import Enum
 from typing import Any, BinaryIO, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 # global imports
@@ -25,6 +26,32 @@ from getmyancestors.classes.session import GMASession
 from .elements import Citation, Name, Ordinance, Place
 from .records import Fact, Memorie, Note, Source
 from .utils import GEONAME_FEATURE_MAP, cont
+
+
+class ParentRelType(str, Enum):
+    """Parental relationship type in FamilySearch (PEDI)"""
+
+    BIRTH = "birth"
+    ADOPTED = "adopted"
+    STEP = "step"
+    FOSTER = "foster"
+
+    @staticmethod
+    def from_fs_type(facts: list | None) -> "ParentRelType | None":
+        """Parse from FamilySearch fact/relationship type"""
+        if not facts:
+            return None
+        for fact in facts:
+            ftype = fact.get("type", "")
+            if ftype == "http://gedcomx.org/BiologicalParent":
+                return ParentRelType.BIRTH
+            if ftype == "http://gedcomx.org/StepParent":
+                return ParentRelType.STEP
+            if ftype == "http://gedcomx.org/AdoptiveParent":
+                return ParentRelType.ADOPTED
+            if ftype == "http://gedcomx.org/FosterParent":
+                return ParentRelType.FOSTER
+        return None
 
 
 class Indi:
@@ -49,7 +76,7 @@ class Indi:
         self.tree = tree
         self.num_prefix = "I"
         self.origin_file: Optional[str] = None
-        self.famc: Set["Fam"] = set()
+        self.famc: Dict["Fam", Optional[ParentRelType]] = {}
         self.fams: Set["Fam"] = set()
         self.famc_fid: Set[str] = set()
         self.fams_fid: Set[str] = set()
@@ -150,11 +177,17 @@ class Indi:
                             ),
                             None,
                         )
-                        source = (
-                            self.tree.ensure_source(source_data)
-                            if self.tree and source_data
-                            else None
-                        )
+                        if self.tree:
+                            if source_data:
+                                source = self.tree.ensure_source(source_data)
+                            else:
+                                existing_source = self.tree.sources.get(source_id)
+                                if existing_source:
+                                    source = existing_source
+                                else:
+                                    source = self.tree.ensure_source({"id": source_id})
+                        else:
+                            source = None
                         if source and self.tree:
                             citation = self.tree.ensure_citation(quote, source)
                             self.citations.add(citation)
@@ -189,9 +222,9 @@ class Indi:
         """add family fid (for spouse or parent)"""
         self.fams.add(fam)
 
-    def add_famc(self, fam: "Fam"):
+    def add_famc(self, fam: "Fam", rel_type: Optional[ParentRelType] = None):
         """add family fid (for child)"""
-        self.famc.add(fam)
+        self.famc[fam] = rel_type
 
     def get_notes(self):
         """retrieve individual notes"""
@@ -417,8 +450,11 @@ class Indi:
             self.sealing_child.print(file)
         for fam in sorted(self.fams, key=lambda x: x.id or ""):
             file.write("1 FAMS @F%s@\n" % fam.id)
-        for fam in sorted(self.famc, key=lambda x: x.id or ""):
+        for fam in sorted(self.famc.keys(), key=lambda x: x.id or ""):
             file.write("1 FAMC @F%s@\n" % fam.id)
+            val = self.famc[fam]
+            if val:
+                file.write("2 PEDI %s\n" % val.value)
         # print(f'Fams Ids: {self.fams_ids}, {self.fams_fid}, {self.fams_num}', file=sys.stderr)
         # for num in self.fams_ids:
         # print(f'Famc Ids: {self.famc_ids}', file=sys.stderr)

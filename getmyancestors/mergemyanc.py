@@ -113,16 +113,18 @@ def main(
             def merge_names(target_set, source_set):
                 # Combine all names and sort deterministically
                 all_names = list(target_set) + list(source_set)
-                all_names.sort(key=lambda x: (
-                    str(x),
-                    x.given or "",
-                    x.surname or "",
-                    x.prefix or "",
-                    x.suffix or "",
-                    x.kind or "",
-                    str(x.alternative) if hasattr(x, 'alternative') else "",
-                    x.note.text if hasattr(x, 'note') and x.note else "",
-                ))
+                all_names.sort(
+                    key=lambda nm: (
+                        str(nm),
+                        nm.given or "",
+                        nm.surname or "",
+                        nm.prefix or "",
+                        nm.suffix or "",
+                        nm.kind or "",
+                        str(nm.alternative) if hasattr(nm, "alternative") else "",
+                        nm.note.text if hasattr(nm, "note") and nm.note else "",
+                    )
+                )
                 # Rebuild target_set keeping first occurrence by string
                 target_set.clear()
                 seen = set()
@@ -365,7 +367,7 @@ def main(
             for chil_fid in fam.chil_fid:
                 if chil_fid in tree.indi:
                     fam.children.add(tree.indi[chil_fid])
-                    tree.indi[chil_fid].famc.add(fam)
+                    tree.indi[chil_fid].add_famc(fam)
 
         # compute number for family relationships and print GEDCOM file
         tree.reset_num()

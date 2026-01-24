@@ -89,15 +89,13 @@ format:	##H@@ Format with black & isort
 		ruff check --fix --exit-zero $(ARGS) ${PY_CHANGED_FILES}; \
 	fi
 
-.PHONY: lint/
-lint/: lint/ruff lint/pylint lint/mypy
-lint/:	##H@@ Lint with ruff, pylint, and mypy
-
 .PHONY: lint
-lint: lint/
+lint: ruff pylint mypy
+lint:	##H@@ Lint with ruff, pylint, and mypy
 
-.PHONY: lint/ruff
-lint/ruff:
+
+.PHONY: ruff
+ruff:
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# ruff (lint)
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -105,8 +103,8 @@ lint/ruff:
 		ruff check ${PY_CHANGED_FILES}; \
 	fi
 
-.PHONY: lint/pylint
-lint/pylint:
+.PHONY: pylint
+pylint:
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# pylint
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -114,20 +112,14 @@ lint/pylint:
 		pylint -j 0 ${PY_CHANGED_FILES}; \
 	fi
 
-.PHONY: lint/mypy
-lint/mypy:
+.PHONY: mypy
+mypy:
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	# mypy
 	# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	-if [ -n "${PY_CHANGED_FILES_FLAG}" ]; then \
 		mypy ${PY_CHANGED_FILES}; \
 	fi
-
-.PHONY: pylint
-pylint: lint/pylint
-
-.PHONY: mypy
-mypy: lint/mypy
 
 
 .PHONY: clean
