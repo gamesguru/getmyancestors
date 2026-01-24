@@ -106,7 +106,7 @@ def check_diff(generated_path, artifact_path, label):
         print(f"✓ {label} matches artifact exactly.")
         return True
 
-    print(f"⚠️  {label} differs from artifact. Showing diff (first 10 lines):")
+    print(f"⚠️  {label} differs from artifact. Showing diff (first 20 lines):")
     print("Diff Stat:")
     subprocess.run(
         [
@@ -120,9 +120,20 @@ def check_diff(generated_path, artifact_path, label):
         check=False,
     )
     print("...")
-    subprocess.run(
-        ["diff", "--color=always", str(generated_path), str(artifact_path)], check=False
-    )
+    # Cap output to avoid massive CI logs
+    try:
+        with subprocess.Popen(
+            ["diff", "--color=always", str(generated_path), str(artifact_path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        ) as diff_proc:
+            stdout, _ = diff_proc.communicate(timeout=5)
+            print("\n".join(stdout.splitlines()[:20]))
+            if len(stdout.splitlines()) > 20:
+                print("... (truncated)")
+    except Exception as e:
+        print(f"Error running diff: {e}")
     print(f"❌ Verified failed for {label}")
     return False
 

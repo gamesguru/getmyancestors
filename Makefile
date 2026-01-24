@@ -108,8 +108,8 @@ $(TEST_TARGETS): test/unit/%:
 test:	##H@@ Run unit & E2E tests
 test: test/unit test/offline test/install test/cov
 
-.PHONY:test/
-test/:test
+.PHONY: test/
+test/: test
 
 .PHONY: test/cov
 test/cov:	##H@@ Combine all coverage data and show report

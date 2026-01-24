@@ -138,8 +138,8 @@ class GMASession(requests.Session):
         self.check_license()
 
         # Debug logging toggle
-        # Debug logging toggle
-        if os.environ.get("GMA_DEBUG"):
+        self.debug = bool(os.environ.get("GMA_DEBUG"))
+        if self.debug:
             logger = logging.getLogger()
             logger.setLevel(logging.DEBUG)
             # Add secure filter
@@ -364,9 +364,9 @@ class GMASession(requests.Session):
             )
             with context:
                 self.set_current(auto_login=False)
+            if self.debug:
+                self.write_log(f"Backend path: {self.db_path}", "debug")
             if self.logged and self.fid:
-                if self.verbose:
-                    self.write_log("Successfully reused cached session.")
                 return True
             if self.verbose:
                 self.write_log("Cached session invalid or expired.")

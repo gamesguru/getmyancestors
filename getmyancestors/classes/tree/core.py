@@ -56,7 +56,7 @@ class ParentRelType(str, Enum):
 
 class Indi:
     """GEDCOM individual class
-    :param fid' FamilySearch id
+    :param fid: FamilySearch id
     :param tree: a tree object
     :param num: the GEDCOM identifier
     """
