@@ -1,5 +1,3 @@
-import os
-import sys
 from typing import Optional
 
 from getmyancestors.classes.constants import FACT_TYPES, ORDINANCES
@@ -13,15 +11,7 @@ from getmyancestors.classes.tree import (
     Ordinance,
     Source,
 )
-
-
-def _warn(msg: str):
-    """Write a warning message to stderr with optional color (if TTY)."""
-    use_color = sys.stderr.isatty() or os.environ.get("FORCE_COLOR", "")
-    if use_color:
-        sys.stderr.write(f"\033[33m{msg}\033[0m\n")
-    else:
-        sys.stderr.write(f"{msg}\n")
+from getmyancestors.utils import _error, _warn
 
 
 class Gedcom:
@@ -359,6 +349,11 @@ class Gedcom:
                     f"Warning: Family @F{num}@ ({husb_name} & {wife_name}) missing _FSFTID tag, "
                     f"using GEDCOM pointer as fallback."
                 )
+                if husb_name != "Unknown" and wife_name != "Unknown":
+                    _error(
+                        f"Error: Family @F{num}@ ({husb_name} & {wife_name}) has NO _FSFTID tag! "
+                        "This may imply a problem with the FamilySearch data. You may need to investigate it."
+                    )
                 fam.fid = num  # Use GEDCOM pointer ID as fallback
 
         for _num, fam in self.fam.items():

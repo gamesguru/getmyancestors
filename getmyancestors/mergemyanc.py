@@ -26,15 +26,6 @@ app = typer.Typer(
 )
 
 
-def _warn(msg: str):
-    """Write a warning message to stderr with optional color (if TTY)."""
-    use_color = sys.stderr.isatty() or os.environ.get("FORCE_COLOR", "")
-    if use_color:
-        sys.stderr.write(f"\033[33m{msg}\033[0m\n")
-    else:
-        sys.stderr.write(f"{msg}\n")
-
-
 @app.command()
 def main(
     files: Annotated[
@@ -129,10 +120,20 @@ def main(
                 target_set.clear()
                 seen = set()
                 for n in all_names:
-                    s = str(n)
-                    if s not in seen:
+                    # Use all relevant fields for deduplication key, similar to sort key
+                    # but using the object's hash/eq properties if possible, or a tuple representation
+                    key = (
+                        n.given,
+                        n.surname,
+                        n.prefix,
+                        n.suffix,
+                        n.kind,
+                        n.alternative,
+                        n.note.text if hasattr(n, "note") and n.note else None,
+                    )
+                    if key not in seen:
                         target_set.add(n)
-                        seen.add(s)
+                        seen.add(key)
 
             # Helper for whitespace normalization in quotes
             def norm_space(s):

@@ -375,8 +375,10 @@ class Indi:
     def print(self, file=sys.stdout):
         """print individual in GEDCOM format"""
         file.write("0 @I%s@ INDI\n" % self.id)
+        printed_names = set()
         if self.name:
             self.name.print(file)
+            printed_names.add(self.name)
         for nick in sorted(
             self.nicknames,
             key=lambda x: (
@@ -390,6 +392,7 @@ class Indi:
             ),
         ):
             file.write(cont("2 NICK %s %s" % (nick.given, nick.surname)))
+            printed_names.add(nick)
         for birthname in sorted(
             self.birthnames,
             key=lambda x: (
@@ -402,7 +405,9 @@ class Indi:
                 x.note.text if x.note else "",
             ),
         ):
-            birthname.print(file)
+            if birthname not in printed_names:
+                birthname.print(file)
+                printed_names.add(birthname)
         for aka in sorted(
             self.aka,
             key=lambda x: (
@@ -415,7 +420,9 @@ class Indi:
                 x.note.text if x.note else "",
             ),
         ):
-            aka.print(file, "aka")
+            if aka not in printed_names:
+                aka.print(file, "aka")
+                printed_names.add(aka)
         for married_name in sorted(
             self.married,
             key=lambda x: (
@@ -428,7 +435,9 @@ class Indi:
                 x.note.text if x.note else "",
             ),
         ):
-            married_name.print(file, "married")
+            if married_name not in printed_names:
+                married_name.print(file, "married")
+                printed_names.add(married_name)
         if self.gender:
             file.write("1 SEX %s\n" % self.gender)
         for fact in sorted(

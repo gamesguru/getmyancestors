@@ -1,5 +1,3 @@
-
-
 from getmyancestors.classes.tree.core import Indi, Tree
 
 

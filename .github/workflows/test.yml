@@ -51,6 +51,9 @@ jobs:
         run: make lint
         if: runner.os == 'Linux'
 
+      - name: Test [Install]
+        run: make test/install
+
       - name: Test [Unit]
         run: make test/unit
 
