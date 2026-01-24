@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-# global imports
-from __future__ import print_function
-
 import asyncio
 import getpass
 import os
@@ -401,7 +398,10 @@ def main(
             + "...",
             file=sys.stderr,
         )
-        loop.run_until_complete(download_stuff(loop))
+        try:
+            loop.run_until_complete(download_stuff(loop))
+        finally:
+            loop.close()
 
         success = True
 
