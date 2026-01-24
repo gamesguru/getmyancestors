@@ -121,17 +121,30 @@ class Indi:
             self.living = data["living"]
             for x in data["names"]:
                 alt = not x.get("preferred", False)
+                name_kind = None
+                target_set = None
+
                 if x["type"] == "http://gedcomx.org/Nickname":
-                    self.nicknames.add(Name(x, self.tree, self.fid, "nickname", alt))
+                    name_kind = "nickname"
+                    target_set = self.nicknames
                 elif x["type"] == "http://gedcomx.org/BirthName":
-                    self.birthnames.add(Name(x, self.tree, self.fid, "birthname", alt))
+                    name_kind = "birthname"
+                    target_set = self.birthnames
                 elif x["type"] == "http://gedcomx.org/AlsoKnownAs":
-                    self.aka.add(Name(x, self.tree, self.fid, "aka", alt))
+                    name_kind = "aka"
+                    target_set = self.aka
                 elif x["type"] == "http://gedcomx.org/MarriedName":
-                    self.married.add(Name(x, self.tree, self.fid, "married", alt))
+                    name_kind = "married"
+                    target_set = self.married
                 else:
                     print("Unknown name type: " + x.get("type"), file=sys.stderr)
                     raise ValueError("Unknown name type")
+
+                name_obj = Name(x, self.tree, self.fid, name_kind, alt)
+                target_set.add(name_obj)
+
+                if not alt and not self.name:
+                    self.name = name_obj
             if "gender" in data:
                 if data["gender"]["type"] == "http://gedcomx.org/Male":
                     self.gender = "M"
@@ -166,7 +179,7 @@ class Indi:
                 sources = self.tree.fs.get_url(
                     "/platform/tree/persons/%s/sources" % self.fid
                 )
-                if sources:
+                if sources and "sourceDescriptions" in sources and "persons" in sources:
                     for quote in sources["persons"][0]["sources"]:
                         source_id = quote["descriptionId"]
                         source_data = next(
@@ -589,18 +602,20 @@ class Fam:
                         sources = self.tree.fs.get_url(
                             "/platform/tree/couple-relationships/%s/sources" % self.fid
                         )
-                        for source in sources["sourceDescriptions"]:
-                            if (
-                                source["id"] in new_sources
-                                and source["id"] not in self.tree.sources
-                            ):
-                                self.tree.sources[source["id"]] = Source(
-                                    source, self.tree
-                                )
+                        if sources and "sourceDescriptions" in sources:
+                            for source in sources["sourceDescriptions"]:
+                                if (
+                                    source["id"] in new_sources
+                                    and source["id"] not in self.tree.sources
+                                ):
+                                    self.tree.sources[source["id"]] = Source(
+                                        source, self.tree
+                                    )
                     for source_fid, change_message in quotes.items():
-                        self.sources.add(
-                            (self.tree.sources[source_fid], change_message)
-                        )
+                        if source_fid in self.tree.sources:
+                            self.sources.add(
+                                (self.tree.sources[source_fid], change_message)
+                            )
 
     def get_notes(self):
         """retrieve marriage notes"""

@@ -148,7 +148,7 @@ source = ["getmyancestors"]
 data_file = ".tmp/.coverage"
 
 [tool.coverage.report]
-fail_under = 45.00
+fail_under = 67.98
 precision = 2
 
 show_missing = true
