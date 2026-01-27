@@ -364,7 +364,7 @@ class GMASession(requests.Session):
             )
             with context:
                 self.set_current(auto_login=False)
-            if self.debug:
+            if getattr(self, "debug", False):
                 self.write_log(f"Backend path: {self.db_path}", "debug")
             if self.logged and self.fid:
                 return True
