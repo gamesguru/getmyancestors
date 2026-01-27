@@ -1,0 +1,13 @@
+!.gemini/
+!test_debug.py
+
+.venv/
+build
+*.egg-info
+!.envrc
+!.env
+
+.coverage
+http_cache
+.pytest_cache
+.tmp

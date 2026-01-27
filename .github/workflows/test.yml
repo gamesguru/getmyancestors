@@ -1,0 +1,84 @@
+---
+name: ci
+
+"on":
+  push: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test-core:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      SKIP_VENV: 1
+    steps:
+      - name: Install git-sqlite-filter
+        run: |
+          pip install pipx
+          pipx install git+https://github.com/gamesguru/git-sqlite-filter.git@c2a4089
+          pipx ensurepath
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          git config --global filter.sqlite.clean "git-sqlite-clean %f"
+          git config --global filter.sqlite.smudge "git-sqlite-smudge %f"
+          git config --global filter.sqlite.required true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Fetch master
+        run: git fetch origin master
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install ".[dev]"
+
+      - name: Format Check
+        run: make format
+        if: runner.os == 'Linux'
+
+      - name: Lint
+        run: make lint
+        if: runner.os == 'Linux'
+
+      - name: Test [Install]
+        run: make test/install
+
+      - name: Test [Unit]
+        run: make test/unit
+
+      - name: Test [Offline Verification]
+        shell: bash
+        # Fails due to bash script not being cross-platform out of the box
+        continue-on-error: ${{ matrix.os == 'windows-latest' }}
+        run: make test/offline
+
+      - name: Combine Coverage
+        run: make test/cov
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          parallel: true
+          flag-name: run-${{ matrix.os }}
+
+  finish:
+    needs: test-core
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls Finished
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true

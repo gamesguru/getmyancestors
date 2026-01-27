@@ -1,26 +1,20 @@
 # fstogedcom classes and functions
+import asyncio
 import os
 import re
-import time
-import asyncio
 import tempfile
+import time
 from threading import Thread
+from tkinter import IntVar, Menu, StringVar, TclError, filedialog, messagebox
+from tkinter.ttk import Button, Checkbutton, Entry, Frame, Label, Notebook, Treeview
+from typing import Literal, cast
+
 from diskcache import Cache
 
-from tkinter import (
-    StringVar,
-    IntVar,
-    filedialog,
-    messagebox,
-    Menu,
-    TclError,
-)
-from tkinter.ttk import Frame, Label, Entry, Button, Checkbutton, Treeview, Notebook
-
-from getmyancestors.classes.tree import Indi, Fam, Tree
 from getmyancestors.classes.gedcom import Gedcom
 from getmyancestors.classes.session import Session
 from getmyancestors.classes.translation import translations
+from getmyancestors.classes.tree import Fam, Indi, Tree
 
 tmp_dir = os.path.join(tempfile.gettempdir(), "fstogedcom")
 cache = Cache(tmp_dir)
@@ -48,8 +42,11 @@ class EntryWithMenu(Entry):
             state = "normal"
         except TclError:
             state = "disabled"
-        menu.add_command(label=_("Copy"), command=self.copy, state=state)
-        menu.add_command(label=_("Cut"), command=self.cut, state=state)
+
+        # Cast to Literal for mypy
+        state_lit = cast(Literal["normal", "disabled"], state)
+        menu.add_command(label=_("Copy"), command=self.copy, state=state_lit)
+        menu.add_command(label=_("Cut"), command=self.cut, state=state_lit)
         menu.add_command(label=_("Paste"), command=self.paste)
         menu.post(event.x_root, event.y_root)
 
@@ -96,9 +93,19 @@ class FilesToMerge(Treeview):
                 _("Error"), message=_("File not found: ") + os.path.basename(filename)
             )
             return
-        file = open(filename, "r", encoding="utf-8")
-        new_id = self.insert("", 0, text=os.path.basename(filename))
-        self.files[new_id] = file
+        try:
+            # pylint: disable=consider-using-with
+            file = open(filename, "r", encoding="utf-8")
+        except OSError as e:
+            messagebox.showinfo(_("Error"), message=_("Error opening file: ") + str(e))
+            return
+
+        try:
+            new_id = self.insert("", 0, text=os.path.basename(filename))
+            self.files[new_id] = file
+        except TclError:
+            file.close()
+            messagebox.showinfo(_("Error"), message=_("Error adding file to list"))
 
     def popup(self, event):
         """open menu to remove item"""
@@ -176,46 +183,46 @@ class Merge(Frame):
             ged = Gedcom(file, tree)
 
             # add informations about individuals
-            for num in ged.indi:
-                fid = ged.indi[num].fid
+            for _num, indi in ged.indi.items():
+                fid = indi.fid
                 if fid not in tree.indi:
                     indi_counter += 1
                     tree.indi[fid] = Indi(tree=tree, num=indi_counter)
                     tree.indi[fid].tree = tree
-                    tree.indi[fid].fid = ged.indi[num].fid
-                tree.indi[fid].fams_fid |= ged.indi[num].fams_fid
-                tree.indi[fid].famc_fid |= ged.indi[num].famc_fid
-                tree.indi[fid].name = ged.indi[num].name
-                tree.indi[fid].birthnames = ged.indi[num].birthnames
-                tree.indi[fid].nicknames = ged.indi[num].nicknames
-                tree.indi[fid].aka = ged.indi[num].aka
-                tree.indi[fid].married = ged.indi[num].married
-                tree.indi[fid].gender = ged.indi[num].gender
-                tree.indi[fid].facts = ged.indi[num].facts
-                tree.indi[fid].notes = ged.indi[num].notes
-                tree.indi[fid].sources = ged.indi[num].sources
-                tree.indi[fid].memories = ged.indi[num].memories
-                tree.indi[fid].baptism = ged.indi[num].baptism
-                tree.indi[fid].confirmation = ged.indi[num].confirmation
-                tree.indi[fid].endowment = ged.indi[num].endowment
+                    tree.indi[fid].fid = indi.fid
+                tree.indi[fid].fams_fid |= indi.fams_fid
+                tree.indi[fid].famc_fid |= indi.famc_fid
+                tree.indi[fid].name = indi.name
+                tree.indi[fid].birthnames |= indi.birthnames
+                tree.indi[fid].nicknames |= indi.nicknames
+                tree.indi[fid].aka |= indi.aka
+                tree.indi[fid].married |= indi.married
+                tree.indi[fid].gender = indi.gender
+                tree.indi[fid].facts |= indi.facts
+                tree.indi[fid].notes |= indi.notes
+                tree.indi[fid].sources |= indi.sources
+                tree.indi[fid].memories |= indi.memories
+                tree.indi[fid].baptism = indi.baptism
+                tree.indi[fid].confirmation = indi.confirmation
+                tree.indi[fid].endowment = indi.endowment
                 if not (
                     tree.indi[fid].sealing_child and tree.indi[fid].sealing_child.famc
                 ):
-                    tree.indi[fid].sealing_child = ged.indi[num].sealing_child
+                    tree.indi[fid].sealing_child = indi.sealing_child
 
             # add informations about families
-            for num in ged.fam:
-                husb, wife = (ged.fam[num].husb_fid, ged.fam[num].wife_fid)
+            for _num, fam in ged.fam.items():
+                husb, wife = (fam.husb_fid, fam.wife_fid)
                 if (husb, wife) not in tree.fam:
                     fam_counter += 1
                     tree.fam[(husb, wife)] = Fam(husb, wife, tree, fam_counter)
                     tree.fam[(husb, wife)].tree = tree
-                tree.fam[(husb, wife)].chil_fid |= ged.fam[num].chil_fid
-                tree.fam[(husb, wife)].fid = ged.fam[num].fid
-                tree.fam[(husb, wife)].facts = ged.fam[num].facts
-                tree.fam[(husb, wife)].notes = ged.fam[num].notes
-                tree.fam[(husb, wife)].sources = ged.fam[num].sources
-                tree.fam[(husb, wife)].sealing_spouse = ged.fam[num].sealing_spouse
+                tree.fam[(husb, wife)].chil_fid |= fam.chil_fid
+                tree.fam[(husb, wife)].fid = fam.fid
+                tree.fam[(husb, wife)].facts |= fam.facts
+                tree.fam[(husb, wife)].notes |= fam.notes
+                tree.fam[(husb, wife)].sources |= fam.sources
+                tree.fam[(husb, wife)].sealing_spouse = fam.sealing_spouse
 
         # merge notes by text
         tree.notes = sorted(tree.notes, key=lambda x: x.text)
@@ -258,7 +265,13 @@ class SignIn(Frame):
 
         self.save_password = IntVar()
         self.save_password.set(cache.get("save_password") or 0)
-        check_save_password = Checkbutton(self, text=_("Save Password"), variable=self.save_password, onvalue=1, offvalue=0)
+        check_save_password = Checkbutton(
+            self,
+            text=_("Save Password"),
+            variable=self.save_password,
+            onvalue=1,
+            offvalue=0,
+        )
 
         label_username.grid(row=0, column=0, pady=15, padx=(0, 5))
         entry_username.grid(row=0, column=1)
@@ -468,7 +481,7 @@ class Download(Frame):
 
     def login(self):
         """log in FamilySearch"""
-        global _
+        global _  # pylint: disable=global-statement
         username = self.sign_in.username.get()
         password = self.sign_in.password.get()
         if not (username and password):
@@ -478,6 +491,7 @@ class Download(Frame):
             return
         self.btn_valid.config(state="disabled")
         self.info(_("Login to FamilySearch..."))
+        # pylint: disable=consider-using-with
         self.logfile = open("download.log", "w", encoding="utf-8")
         self.fs = Session(
             self.sign_in.username.get(),
@@ -511,8 +525,13 @@ class Download(Frame):
         cache.delete("save_password")
         cache.add("save_password", save_pass)
 
-        url = "/service/tree/tree-data/reservations/person/%s/ordinances" % self.fs.fid
-        lds_account = self.fs.get_url(url, {}, no_api=True).get("status") == "OK"
+        url = (
+            "https://www.familysearch.org/service/tree/tree-data/reservations/person/%s/ordinances"
+            % self.fs.fid
+        )
+        # Restore no_api=True to query main site service instead of API
+        response = self.fs.get_url(url, {}, no_api=True)
+        lds_account = response and response.get("status") == "OK"
         self.options = Options(self.form, lds_account)
         self.info("")
         self.sign_in.destroy()

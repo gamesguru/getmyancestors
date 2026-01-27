@@ -1,0 +1,3 @@
+[submodule "tests/data"]
+	path = res/testdata
+	url = https://gitlab.com/gg-io/getmyancestors-tests-data.git
